@@ -1,0 +1,28 @@
+[project]
+name = "unison-backend"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "inbagururaj", email = "inbagururaj@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141.1",
+    "librosa>=1.0.0",
+    "numpy>=2.5.3",
+    "pyrubberband>=0.4.0",
+    "python-multipart>=0.0.32",
+    "soundfile>=0.14.0",
+    "uvicorn[standard]>=0.53.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
