@@ -89,11 +89,17 @@ export default function PitchChart({ reference, before, after }: Props) {
     PAD_BOTTOM -
     ((m - midiMin) / (midiMax - midiMin)) * (HEIGHT - PAD_TOP - PAD_BOTTOM);
 
+  const semitones: number[] = [];
+  for (let m = Math.ceil(midiMin); m <= midiMax; m++) semitones.push(m);
+  const isC = (m: number) => ((m % 12) + 12) % 12 === 0;
+  const cNotes = semitones.filter(isC);
+
   const noteStep = midiMax - midiMin > 24 ? 4 : midiMax - midiMin > 14 ? 2 : 1;
-  const yTicks: number[] = [];
+  const fallbackTicks: number[] = [];
   for (let m = Math.ceil(midiMin / noteStep) * noteStep; m <= midiMax; m += noteStep) {
-    yTicks.push(m);
+    fallbackTicks.push(m);
   }
+  const labelTicks = cNotes.length >= 2 ? cNotes : fallbackTicks;
 
   const secondsStep = maxTime > 20 ? 5 : maxTime > 8 ? 2 : 1;
   const xTicks: number[] = [];
@@ -106,19 +112,21 @@ export default function PitchChart({ reference, before, after }: Props) {
       role="img"
       aria-label="pitch chart comparing reference, your take, and the corrected take"
     >
-      {yTicks.map((m) => (
-        <g key={`y-${m}`}>
-          <line
-            x1={PAD_LEFT}
-            x2={WIDTH - PAD_RIGHT}
-            y1={yScale(m)}
-            y2={yScale(m)}
-            className="chart-gridline"
-          />
-          <text x={PAD_LEFT - 8} y={yScale(m) + 3} className="chart-axis-label" textAnchor="end">
-            {midiToNoteName(m)}
-          </text>
-        </g>
+      {semitones.map((m) => (
+        <line
+          key={`grid-${m}`}
+          x1={PAD_LEFT}
+          x2={WIDTH - PAD_RIGHT}
+          y1={yScale(m)}
+          y2={yScale(m)}
+          className={isC(m) ? "chart-gridline chart-gridline-c" : "chart-gridline"}
+        />
+      ))}
+
+      {labelTicks.map((m) => (
+        <text key={`y-label-${m}`} x={PAD_LEFT - 8} y={yScale(m) + 3} className="chart-axis-label" textAnchor="end">
+          {midiToNoteName(m)}
+        </text>
       ))}
 
       {xTicks.map((s) => (
@@ -136,7 +144,7 @@ export default function PitchChart({ reference, before, after }: Props) {
       {tracks.map((track) => (
         <g key={track.label}>
           {buildPaths(track.data, xScale, yScale).map((d, i) => (
-            <path key={i} d={d} className={track.className} fill="none" />
+            <path key={i} d={d} className={track.className} />
           ))}
         </g>
       ))}

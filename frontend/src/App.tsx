@@ -1,8 +1,24 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, processTake, type ProcessResult } from "./api";
 import PitchChart from "./PitchChart";
 
 type Status = "idle" | "processing" | "done" | "error";
+
+function useObjectUrl(blob: File | Blob | null): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!blob) {
+      setUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [blob]);
+
+  return url;
+}
 
 export default function App() {
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
@@ -73,6 +89,9 @@ export default function App() {
 
   const canProcess = referenceFile !== null && takeBlob !== null && status !== "processing";
 
+  const takeUrl = useObjectUrl(takeBlob);
+  const referenceUrl = useObjectUrl(referenceFile);
+
   return (
     <main className="page">
       <header className="intro">
@@ -83,11 +102,14 @@ export default function App() {
       <section className="step">
         <h2>1. reference</h2>
         <p className="step-help">A vocals-only recording (audio or video) to sing along to.</p>
-        <input
-          type="file"
-          accept="audio/*,video/*"
-          onChange={(e) => setReferenceFile(e.target.files?.[0] ?? null)}
-        />
+        <label className="button-secondary file-button">
+          choose file
+          <input
+            type="file"
+            accept="audio/*,video/*"
+            onChange={(e) => setReferenceFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
         {referenceFile && <p className="file-chosen">chosen: {referenceFile.name}</p>}
       </section>
 
@@ -104,15 +126,18 @@ export default function App() {
               stop ({recordSeconds}s)
             </button>
           )}
-          <input
-            type="file"
-            accept="audio/*,video/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0] ?? null;
-              setTakeBlob(file);
-              setTakeLabel(file ? file.name : "");
-            }}
-          />
+          <label className="button-secondary file-button">
+            choose file
+            <input
+              type="file"
+              accept="audio/*,video/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setTakeBlob(file);
+                setTakeLabel(file ? file.name : "");
+              }}
+            />
+          </label>
         </div>
         {takeLabel && <p className="file-chosen">chosen: {takeLabel}</p>}
       </section>
@@ -129,6 +154,10 @@ export default function App() {
             onChange={(e) => setSnapStrength(Number(e.target.value))}
           />
           <span className="snap-value">{snapStrength}%</span>
+        </div>
+        <div className="snap-labels">
+          <span>natural</span>
+          <span>locked to reference</span>
         </div>
       </section>
 
@@ -151,29 +180,29 @@ export default function App() {
 
           <div className="players">
             <div className="player">
+              <span className="player-label">reference</span>
+              {referenceUrl && <audio controls src={referenceUrl} />}
+            </div>
+            <div className="player">
               <span className="player-label">your take</span>
-              {takeBlob && <audio controls src={URL.createObjectURL(takeBlob)} />}
+              {takeUrl && <audio controls src={takeUrl} />}
             </div>
             <div className="player">
               <span className="player-label">corrected</span>
               <audio controls src={result.corrected_audio_url} />
             </div>
-            <div className="player">
-              <span className="player-label">reference</span>
-              {referenceFile && <audio controls src={URL.createObjectURL(referenceFile)} />}
-            </div>
           </div>
 
-          <PitchChart
-            reference={result.pitch.reference}
-            before={result.pitch.before}
-            after={result.pitch.after}
-          />
           <div className="chart-legend">
             <span className="legend-item"><i className="legend-swatch legend-swatch-reference" /> reference</span>
             <span className="legend-item"><i className="legend-swatch legend-swatch-before" /> your take</span>
             <span className="legend-item"><i className="legend-swatch legend-swatch-after" /> corrected</span>
           </div>
+          <PitchChart
+            reference={result.pitch.reference}
+            before={result.pitch.before}
+            after={result.pitch.after}
+          />
         </section>
       )}
     </main>
