@@ -1,24 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ApiError, processTake, type ProcessResult } from "./api";
 import PitchChart from "./PitchChart";
 
 type Status = "idle" | "processing" | "done" | "error";
-
-function useObjectUrl(blob: File | Blob | null): string | null {
-  const [url, setUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!blob) {
-      setUrl(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(blob);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [blob]);
-
-  return url;
-}
 
 export default function App() {
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
@@ -88,9 +72,6 @@ export default function App() {
   }
 
   const canProcess = referenceFile !== null && takeBlob !== null && status !== "processing";
-
-  const takeUrl = useObjectUrl(takeBlob);
-  const referenceUrl = useObjectUrl(referenceFile);
 
   return (
     <main className="page">
@@ -180,15 +161,6 @@ export default function App() {
 
           <div className="players">
             <div className="player">
-              <span className="player-label">reference</span>
-              {referenceUrl && <audio controls src={referenceUrl} />}
-            </div>
-            <div className="player">
-              <span className="player-label">your take</span>
-              {takeUrl && <audio controls src={takeUrl} />}
-            </div>
-            <div className="player">
-              <span className="player-label">corrected</span>
               <audio controls src={result.corrected_audio_url} />
             </div>
           </div>
