@@ -1,9 +1,9 @@
 // Hand-coded SVG line chart: x is seconds, y is note name. Each track is
 // drawn as one or more path segments, breaking the line wherever the pitch
 // is unvoiced (null) so gaps show as gaps rather than a straight line
-// across silence. For the autotune engine there is no reference line
-// (the reference is never aligned to the take); instead the allowed scale
-// notes are drawn as dashed guides.
+// across silence. The three tracks arrive already on one shared time axis
+// (the backend maps them), and share one pitch scale here. For the autotune
+// engine the allowed scale notes are also drawn as dashed guides.
 
 import type { PitchTrackData } from "./api";
 
@@ -23,7 +23,7 @@ interface Track {
 }
 
 interface Props {
-  reference: PitchTrackData | null;
+  reference: PitchTrackData;
   before: PitchTrackData;
   after: PitchTrackData;
   scaleNotes?: number[];
@@ -66,7 +66,7 @@ function buildPaths(
 
 export default function PitchChart({ reference, before, after, scaleNotes = [] }: Props) {
   const tracks: Track[] = [
-    ...(reference ? [{ label: "reference", data: reference, className: "pitch-line-reference" }] : []),
+    { label: "reference", data: reference, className: "pitch-line-reference" },
     { label: "your take", data: before, className: "pitch-line-before" },
     { label: "corrected", data: after, className: "pitch-line-after" },
   ];

@@ -39,7 +39,7 @@ export interface ProcessResult {
   take_audio_url: string;
   reference_audio_url: string;
   pitch: {
-    reference: PitchTrackData | null;
+    reference: PitchTrackData;
     before: PitchTrackData;
     after: PitchTrackData;
     scale_notes: number[];

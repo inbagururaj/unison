@@ -4,6 +4,7 @@
   --muted: #6b6862;
   --line: #d9d5cd;
   --accent: #c2410c;
+  --reference: #2563eb;
 }
 
 * {
@@ -204,8 +205,8 @@ button:disabled {
 }
 
 .pitch-line-reference {
-  stroke: var(--muted);
-  stroke-width: 2;
+  stroke: var(--reference);
+  stroke-width: 2.5;
 }
 
 .pitch-line-before {
@@ -244,7 +245,7 @@ button:disabled {
 }
 
 .legend-swatch-reference {
-  background: var(--muted);
+  background: var(--reference);
 }
 
 .legend-swatch-before {

@@ -294,13 +294,12 @@ export default function App() {
             scaleNotes={result.pitch.scale_notes}
           />
           <div className="chart-legend">
-            {result.pitch.reference ? (
-              <span className="legend-item"><i className="legend-swatch legend-swatch-reference" /> reference</span>
-            ) : (
-              <span className="legend-item"><i className="legend-swatch legend-swatch-scale" /> scale notes</span>
-            )}
+            <span className="legend-item"><i className="legend-swatch legend-swatch-reference" /> reference</span>
             <span className="legend-item"><i className="legend-swatch legend-swatch-before" /> your take</span>
             <span className="legend-item"><i className="legend-swatch legend-swatch-after" /> corrected</span>
+            {result.pitch.scale_notes.length > 0 && (
+              <span className="legend-item"><i className="legend-swatch legend-swatch-scale" /> scale notes</span>
+            )}
           </div>
         </section>
       )}

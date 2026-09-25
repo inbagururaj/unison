@@ -51,10 +51,11 @@ app.add_middleware(
 app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
 
 
-def _pitch_track_json(track: PitchTrack) -> dict:
+def _pitch_track_json(track: PitchTrack, times: np.ndarray | None = None) -> dict:
+    """times overrides the track's own time axis (used to put tracks on a shared one)."""
     midi = [None if not v else round(float(m), 3) for m, v in zip(track.midi, track.voiced)]
-    times = [round(float(t), 4) for t in track.times]
-    return {"times": times, "midi": midi}
+    axis = track.times if times is None else times
+    return {"times": [round(float(t), 4) for t in axis], "midi": midi}
 
 
 def _suffix_for(filename: str | None) -> str:
@@ -131,12 +132,13 @@ async def process(
     grid = scale_grid(tonic, used_scale, detected.tuning_cents)
     t = mark("key_detection", t)
 
+    alignment = align(ref_audio.samples, ref_audio.sample_rate, take_audio.samples, take_audio.sample_rate)
+    t = mark("alignment", t)
+
     if engine == "autotune":
         corrected = autotune(take_hq.samples, take_hq.sample_rate, grid, snap_strength, retune_speed_ms)
         t = mark("autotune", t)
     else:
-        alignment = align(ref_audio.samples, ref_audio.sample_rate, take_audio.samples, take_audio.sample_rate)
-        t = mark("alignment", t)
         if engine == "retune":
             corrected = retune(take_audio.samples, ref_audio.samples, take_audio.sample_rate, alignment, snap_strength)
         else:
@@ -166,6 +168,17 @@ async def process(
     write_wav(ref_audio.samples, ref_audio.sample_rate, OUTPUT_DIR / f"{run_id}_reference.wav")
     mark("write_output", t)
 
+    # One shared time axis for the chart. The corrected track keeps its own
+    # times: autotune leaves the take's timing alone, so its axis is the take's
+    # and the reference is mapped onto it through the DTW alignment; retune and
+    # notes output on the reference's timeline, so the take is mapped onto that.
+    if engine == "autotune":
+        take_times = take_track.times
+        ref_times = np.interp(ref_track.times, alignment.ref_times, alignment.take_times)
+    else:
+        ref_times = ref_track.times
+        take_times = np.interp(take_track.times, alignment.take_times, alignment.ref_times)
+
     timings["total"] = round(time.perf_counter() - t_start, 3)
 
     lo = np.nanmin(np.concatenate([take_track.midi, corrected_track.midi, [np.inf]]))
@@ -178,10 +191,8 @@ async def process(
         "take_audio_url": f"/output/{run_id}_take.wav",
         "reference_audio_url": f"/output/{run_id}_reference.wav",
         "pitch": {
-            # autotune never aligns the reference to the take, so drawing it on
-            # the take's time axis would be misleading; show the scale instead
-            "reference": None if engine == "autotune" else _pitch_track_json(ref_track),
-            "before": _pitch_track_json(take_track),
+            "reference": _pitch_track_json(ref_track, ref_times),
+            "before": _pitch_track_json(take_track, take_times),
             "after": _pitch_track_json(corrected_track),
             "scale_notes": visible_grid if engine == "autotune" else [],
         },
