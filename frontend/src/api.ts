@@ -58,10 +58,10 @@ async function postForm<T>(url: string, form: FormData): Promise<T> {
   const response = await fetch(url, { method: "POST", body: form });
 
   if (!response.ok) {
-    let message = `request failed (${response.status})`;
+    let message = `Request failed (${response.status})`;
     try {
       const body = await response.json();
-      if (typeof body.detail === "string") message = body.detail;
+      if (typeof body.detail === "string") message = body.detail.charAt(0).toUpperCase() + body.detail.slice(1);
     } catch {
       // ignore, use default message
     }

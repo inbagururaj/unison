@@ -66,9 +66,9 @@ function buildPaths(
 
 export default function PitchChart({ reference, before, after, scaleNotes = [] }: Props) {
   const tracks: Track[] = [
-    { label: "reference", data: reference, className: "pitch-line-reference" },
-    { label: "your take", data: before, className: "pitch-line-before" },
-    { label: "corrected", data: after, className: "pitch-line-after" },
+    { label: "Reference", data: reference, className: "pitch-line-reference" },
+    { label: "Your take", data: before, className: "pitch-line-before" },
+    { label: "Corrected", data: after, className: "pitch-line-after" },
   ];
 
   const allMidi: number[] = [];
@@ -79,7 +79,7 @@ export default function PitchChart({ reference, before, after, scaleNotes = [] }
   }
 
   if (allMidi.length === 0) {
-    return <p className="chart-empty">no pitch data to show.</p>;
+    return <p className="chart-empty">No pitch data to show.</p>;
   }
 
   const midiMin = Math.floor(Math.min(...allMidi)) - 2;
@@ -107,7 +107,7 @@ export default function PitchChart({ reference, before, after, scaleNotes = [] }
       className="pitch-chart"
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       role="img"
-      aria-label="pitch chart comparing reference, your take, and the corrected take"
+      aria-label="Pitch chart comparing the reference, your take, and the corrected take"
     >
       {yTicks.map((m) => (
         <g key={`y-${m}`}>

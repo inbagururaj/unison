@@ -1,10 +1,34 @@
+/* Theme: every color lives in these variables, so the whole look can change
+   in one place. Measured WCAG contrast (on --bg #0b0f14 unless noted):
+   ink 19.2, muted 10.6, accent 8.5, danger 10.1, focus 14.6, border 5.5
+   (text needs 7 for AAA, controls' borders need 3);
+   on --surface #121923: ink 17.7, muted 9.8, reference line 6.9,
+   corrected line 7.8, take line 17.7; disabled text on its surface 6.5. */
 :root {
-  --bg: #f4f2ee;
-  --ink: #161513;
-  --muted: #6b6862;
-  --line: #d9d5cd;
-  --accent: #c2410c;
-  --reference: #2563eb;
+  color-scheme: dark; /* dark native controls: audio player, select, range */
+
+  --bg: #0b0f14;
+  --surface: #121923; /* cards, inputs, chart background */
+  --surface-disabled: #1b2430;
+
+  --ink: #ffffff;
+  --muted: #b6c2d0;
+  --disabled-ink: #9aa8b8;
+
+  --border: #7b8aa0; /* controls and cards: visible against bg and surface */
+  --border-disabled: #4b5a6d;
+  --divider: #3a4a5e; /* section rules and chart gridlines: decorative, ~2.1:1 on surface */
+
+  --accent: #fb923c;
+  --on-accent: #0b0f14;
+  --focus: #fde047;
+  --danger: #fca5a5;
+  --warn: #fbbf24;
+
+  /* pitch chart lines: three distinct hues on the dark background */
+  --reference: #60a5fa;
+  --take: #ffffff;
+  --corrected: var(--accent);
 }
 
 * {
@@ -19,6 +43,11 @@ body {
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
 
 .page {
@@ -45,7 +74,7 @@ h2 {
 }
 
 .step {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--divider);
   padding: 24px 0;
 }
 
@@ -62,13 +91,29 @@ h2 {
   flex-wrap: wrap;
 }
 
-.file-chosen {
-  margin: 8px 0 0;
-  font-size: 14px;
-  color: var(--muted);
+/* file slot: button + filename that ellipsizes instead of being cut to a length */
+.file-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 260px;
 }
 
-input[type="file"] {
+.file-slot > button {
+  flex: none;
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.file-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14px;
   color: var(--ink);
 }
@@ -76,15 +121,16 @@ input[type="file"] {
 input[type="range"] {
   flex: 1;
   min-width: 160px;
+  accent-color: var(--accent);
 }
 
 select {
   font-family: inherit;
   font-size: 14px;
-  padding: 6px 8px;
-  border: 1px solid var(--line);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--ink);
 }
 
@@ -95,7 +141,7 @@ select {
 
 .snap-value {
   font-variant-numeric: tabular-nums;
-  min-width: 40px;
+  min-width: 56px;
   text-align: right;
 }
 
@@ -103,34 +149,39 @@ button {
   font-family: inherit;
   font-size: 14px;
   border-radius: 4px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   padding: 8px 16px;
   cursor: pointer;
-  background: var(--bg);
+  background: var(--surface);
   color: var(--ink);
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--ink);
 }
 
 button:disabled {
   cursor: not-allowed;
-  color: var(--muted);
-  border-color: var(--line);
+  background: var(--surface-disabled);
+  color: var(--disabled-ink);
+  border-color: var(--border-disabled);
 }
 
 .button-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--bg);
+  color: var(--on-accent);
   font-weight: 600;
 }
 
-.button-primary:disabled {
-  background: var(--line);
-  border-color: var(--line);
-  color: var(--muted);
+.button-primary:hover:not(:disabled) {
+  border-color: var(--ink);
 }
 
-.button-secondary {
-  background: var(--bg);
+.button-primary:disabled {
+  background: var(--surface-disabled);
+  border-color: var(--border-disabled);
+  color: var(--disabled-ink);
 }
 
 .loading-text {
@@ -139,21 +190,22 @@ button:disabled {
 }
 
 .error-text {
-  color: var(--accent);
+  color: var(--danger);
   font-size: 14px;
   margin-top: 8px;
 }
 
 .warning-text {
-  border: 1px solid var(--line);
+  border: 1px solid var(--warn);
   border-radius: 4px;
+  background: var(--surface);
   padding: 8px 16px;
   font-size: 14px;
   margin: 0 0 24px;
 }
 
 .results {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--divider);
   padding-top: 24px;
 }
 
@@ -182,13 +234,13 @@ button:disabled {
 .pitch-chart {
   width: 100%;
   height: auto;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  background: var(--bg);
+  background: var(--surface);
 }
 
 .chart-gridline {
-  stroke: var(--line);
+  stroke: var(--divider);
   stroke-width: 1;
 }
 
@@ -196,12 +248,12 @@ button:disabled {
   stroke: var(--accent);
   stroke-width: 1;
   stroke-dasharray: 3 4;
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
 .chart-axis-label {
   fill: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .pitch-line-reference {
@@ -210,12 +262,12 @@ button:disabled {
 }
 
 .pitch-line-before {
-  stroke: var(--ink);
+  stroke: var(--take);
   stroke-width: 2;
 }
 
 .pitch-line-after {
-  stroke: var(--accent);
+  stroke: var(--corrected);
   stroke-width: 2;
 }
 
@@ -226,10 +278,11 @@ button:disabled {
 
 .chart-legend {
   display: flex;
-  gap: 24px;
+  flex-wrap: wrap;
+  gap: 8px 24px;
   margin-top: 12px;
   font-size: 14px;
-  color: var(--muted);
+  color: var(--ink);
 }
 
 .legend-item {
@@ -240,8 +293,8 @@ button:disabled {
 
 .legend-swatch {
   display: inline-block;
-  width: 16px;
-  height: 2px;
+  width: 20px;
+  height: 3px;
 }
 
 .legend-swatch-reference {
@@ -249,14 +302,13 @@ button:disabled {
 }
 
 .legend-swatch-before {
-  background: var(--ink);
+  background: var(--take);
 }
 
 .legend-swatch-after {
-  background: var(--accent);
+  background: var(--corrected);
 }
 
 .legend-swatch-scale {
   background: repeating-linear-gradient(90deg, var(--accent) 0 3px, transparent 3px 7px);
-  opacity: 0.6;
 }
