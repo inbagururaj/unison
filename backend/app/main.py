@@ -1,6 +1,6 @@
 # The HTTP surface of the app. One real endpoint, POST /api/process, which
 # runs the full pipeline (decode -> pitch track -> solo check -> align ->
-# segment notes -> shift) on an uploaded reference and take, and returns
+# retune) on an uploaded reference and take, and returns
 # the corrected audio plus the data needed to draw the pitch chart. In
 # production this same app also serves the built frontend, so a judge can
 # run one command and get the whole app on one port.
@@ -18,9 +18,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.align import align
 from app.audio_io import AudioLoadError, load_upload, write_wav
-from app.notes import segment_notes
 from app.pitch import PitchTrack, track_pitch
-from app.shift import correct_take
+from app.retune import retune
 from app.solo_check import check_solo_vocal
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -89,19 +88,14 @@ async def process(
     )
     t = mark("alignment", t)
 
-    ref_notes = segment_notes(ref_track)
-    take_notes = segment_notes(take_track)
-    t = mark("note_segmentation", t)
-
-    corrected = correct_take(
+    corrected = retune(
         take_audio.samples,
+        ref_audio.samples,
         take_audio.sample_rate,
-        take_notes,
-        ref_notes,
         alignment,
         snap_strength,
     )
-    t = mark("pitch_shift", t)
+    t = mark("retune", t)
 
     corrected_track = track_pitch(corrected, take_audio.sample_rate)
     t = mark("verify_pitch", t)

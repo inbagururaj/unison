@@ -111,6 +111,26 @@ For every note in the take:
 Any silent gaps between notes are passed through unchanged from the
 original take, so timing outside of sung notes isn't altered.
 
+## 7. retune.py - the current correction engine
+
+`main.py` now uses this instead of the note-by-note `shift.py` (which is
+still in the repo, and still tested, but no longer called). It works on
+the whole take continuously instead of on chopped-up notes:
+
+1. **Decompose** both files with the WORLD vocoder into pitch (f0),
+   spectral envelope (timbre/vowel) and aperiodicity (breathiness), every
+   5 ms.
+2. **Re-time** the take onto the reference's timeline using a smoothed
+   version of the DTW path.
+3. **Correct pitch**: per frame, compute the gap to the reference pitch
+   (folded to the nearest octave, so a singer in another register lands
+   on the matching note), smooth that gap over ~120 ms, scale it by snap
+   strength and add it to the take's own pitch. Because only the smoothed
+   gap is applied, the singer's vibrato and slides survive.
+4. **Resynthesize** with the take's original envelope, so the voice keeps
+   its character (no chipmunk formant shift) and there are no per-note
+   joins to click.
+
 ## API (main.py)
 
 `POST /api/process` ties all of the above together: decode both

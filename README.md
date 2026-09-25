@@ -74,6 +74,23 @@ cd backend
 uv run python ../scripts/make_samples.py
 ```
 
+## Measure quality
+
+`make_voice_samples.py` builds a more voice-like pair (vowel formants,
+vibrato, glides, breath noise, an off-key drifting take). `evaluate.py`
+runs the corrector on it and prints pitch error in cents against the
+reference, before and after, so tuning changes can be compared by number:
+
+```sh
+cd backend
+uv run python ../scripts/make_voice_samples.py
+uv run python ../scripts/evaluate.py                      # default sample pair, snap 100
+uv run python ../scripts/evaluate.py ref.wav take.wav 70  # your own files, snap 70
+```
+
+Tunable constants live at the top of `backend/app/retune.py`
+(`RETUNE_SMOOTH_MS`, `TIMING_SMOOTH_SECONDS`, `REF_MEDIAN_FRAMES`).
+
 ## Run the tests
 
 ```sh
@@ -140,7 +157,7 @@ backend/app/       fastapi app and the audio pipeline
 backend/tests/      pytest tests on synthetic signals
 frontend/src/        react + typescript ui
 samples/              synthetic demo audio (generated, not committed audio you can't regenerate)
-scripts/              scripts/make_samples.py generates samples/
+scripts/              make_samples.py / make_voice_samples.py generate samples/, evaluate.py scores the corrector
 docs/DEVLOG.md        what broke and how it was fixed, per milestone
 docs/HOW_IT_WORKS.md  plain-language explanation of each module
 ```
