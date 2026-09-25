@@ -100,14 +100,21 @@ async def process(
     corrected_track = track_pitch(corrected, take_audio.sample_rate)
     t = mark("verify_pitch", t)
 
-    output_name = f"{uuid.uuid4().hex}.wav"
+    # play back the decoded copies of the inputs too: the browser cannot
+    # always decode what was uploaded (video containers, MediaRecorder webm)
+    run_id = uuid.uuid4().hex
+    output_name = f"{run_id}.wav"
     write_wav(corrected, take_audio.sample_rate, OUTPUT_DIR / output_name)
+    write_wav(take_audio.samples, take_audio.sample_rate, OUTPUT_DIR / f"{run_id}_take.wav")
+    write_wav(ref_audio.samples, ref_audio.sample_rate, OUTPUT_DIR / f"{run_id}_reference.wav")
     mark("write_output", t)
 
     timings["total"] = round(time.perf_counter() - t_start, 3)
 
     return {
         "corrected_audio_url": f"/output/{output_name}",
+        "take_audio_url": f"/output/{run_id}_take.wav",
+        "reference_audio_url": f"/output/{run_id}_reference.wav",
         "pitch": {
             "reference": _pitch_track_json(ref_track),
             "before": _pitch_track_json(take_track),

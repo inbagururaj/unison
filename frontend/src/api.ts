@@ -14,6 +14,8 @@ export interface SoloWarning {
 
 export interface ProcessResult {
   corrected_audio_url: string;
+  take_audio_url: string;
+  reference_audio_url: string;
   pitch: {
     reference: PitchTrackData;
     before: PitchTrackData;

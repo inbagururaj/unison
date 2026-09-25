@@ -18,6 +18,7 @@ export default function App() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
+  const secondsRef = useRef(0);
 
   async function startRecording() {
     setErrorMessage(null);
@@ -31,15 +32,17 @@ export default function App() {
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setTakeBlob(blob);
-        setTakeLabel(`recording (${recordSeconds}s)`);
+        setTakeLabel(`recording (${secondsRef.current}s)`);
         stream.getTracks().forEach((t) => t.stop());
       };
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecordSeconds(0);
+      secondsRef.current = 0;
       timerRef.current = window.setInterval(() => {
-        setRecordSeconds((s) => s + 1);
+        secondsRef.current += 1;
+        setRecordSeconds(secondsRef.current);
       }, 1000);
     } catch {
       setErrorMessage("could not access the microphone. check browser permissions.");
@@ -152,7 +155,7 @@ export default function App() {
           <div className="players">
             <div className="player">
               <span className="player-label">your take</span>
-              {takeBlob && <audio controls src={URL.createObjectURL(takeBlob)} />}
+              <audio controls src={result.take_audio_url} />
             </div>
             <div className="player">
               <span className="player-label">corrected</span>
@@ -160,7 +163,7 @@ export default function App() {
             </div>
             <div className="player">
               <span className="player-label">reference</span>
-              {referenceFile && <audio controls src={URL.createObjectURL(referenceFile)} />}
+              <audio controls src={result.reference_audio_url} />
             </div>
           </div>
 
