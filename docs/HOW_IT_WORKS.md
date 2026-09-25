@@ -136,6 +136,20 @@ For every note in the take:
 Any silent gaps between notes are passed through unchanged from the
 original take, so timing outside of sung notes isn't altered.
 
+### notes_world.py - the notes decisions, done through the vocoder
+
+The notes engine's stretch-and-shift of separate audio chunks is what
+makes it sound choppy. `notes_world.py` keeps its decisions and drops the
+audio processing: the whole take is analyzed once with WORLD (pitch,
+spectral envelope, aperiodicity, every 5 ms); each take note gets the
+same shift as before ((reference note - take note) x strength, tiny
+segments merged, a 60 ms glide between notes), added to the pitch frames
+only; the frames are warped onto the reference's timeline with the same
+smoothed DTW mapping retune uses; and the result is synthesized once.
+Voiced/unvoiced status comes from the take, so silence, breaths and
+consonants stay as they were, and because the envelope is never touched
+the formants do not move however far a note is shifted.
+
 ## 7. retune.py - the "retune" engine
 
 An alternative to the note-by-note `shift.py` (the "notes" engine). It

@@ -11,3 +11,5 @@ frontend/dist/
 *.pyc
 .DS_Store
 Thumbs.db
+samples/engines_*.wav
+samples/notes_stage_*.wav

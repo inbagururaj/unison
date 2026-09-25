@@ -9,8 +9,14 @@ on the same recording:
   strength control. Your timing is never changed.
 - **retune** - time-warps your take onto the reference and follows the
   reference's pitch line.
-- **notes** - the original engine: splits your take into notes, then
-  stretches and pitch-shifts each one.
+- **notes** - splits your take into notes, then stretches and
+  pitch-shifts each one; tiny segments are merged and joins and pitch
+  changes are smoothed. "Notes (before smoothing)" is the original
+  version, kept for comparison.
+- **notes (vocoder)** - the notes engine's pitch decisions applied to the
+  whole take at once through the WORLD vocoder (pitch only, timing by
+  warping frames): nothing is cut, stretched or stitched, and the voice's
+  timbre is kept, which matters most for large pitch shifts.
 
 A pitch chart compares your original take and the corrected result (plus
 the reference line, or the scale's notes for autotune).
@@ -100,7 +106,12 @@ uv run python ../scripts/evaluate.py                                    # autotu
 uv run python ../scripts/evaluate.py --ref r.wav --take t.wav --speed 60 --strength 80
 uv run python ../scripts/evaluate.py --key A --scale minor              # override the detected key
 uv run python ../scripts/evaluate.py --engine retune                    # the retune engine
+uv run python ../scripts/compare_engines.py                             # notes/vocoder/retune side by side
+uv run python ../scripts/diagnose_notes.py                              # stage-by-stage check of the notes smoothing
 ```
+
+`compare_engines.py` also writes `samples/engines_*.wav` (and
+`engines_take.wav`) so the engines can be compared by ear.
 
 For autotune it prints: pitch error to the scale per frame and per note
 (the per-note number averages vibrato out), how much vibrato survived,

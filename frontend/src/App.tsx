@@ -18,6 +18,8 @@ const ENGINE_HELP: Record<Engine, string> = {
   autotune: "Snaps each moment of your take to the nearest note in the key. Your timing is never changed.",
   retune: "Stretches your take onto the reference's timing and follows the reference's pitch line.",
   notes: "Cuts your take into notes, then stretches and shifts each one, with tiny segments merged and smooth joins and pitch glides.",
+  notes_world:
+    "The notes engine's pitch decisions applied to the whole take at once through the vocoder: nothing is cut, stretched or stitched, and your voice's timbre is kept.",
   notes_legacy: "The notes engine exactly as it was before the smoothing changes, for comparing.",
 };
 
@@ -173,6 +175,7 @@ export default function App() {
           <option value="autotune">Autotune (key/scale)</option>
           <option value="retune">Retune (follow reference)</option>
           <option value="notes">Notes (smoothed)</option>
+          <option value="notes_world">Notes (vocoder)</option>
           <option value="notes_legacy">Notes (before smoothing)</option>
         </select>
       </section>

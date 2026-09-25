@@ -6,6 +6,9 @@
 #   retune    time-warp the take onto the reference and follow its pitch contour
 #   notes     note-by-note shift and stretch, smoothed (merged segments, limited
 #             ratio changes, context padding, longer crossfade, pitch glide)
+#   notes_world   the notes engine's per-note pitch decisions, applied to WORLD
+#             parameters (f0 only) with the take's frames warped by the DTW
+#             alignment, then resynthesized once: nothing stretched as audio
 #   notes_legacy  the same engine exactly as it was before the smoothing, for A/B
 #
 # POST /api/detect-key returns just the detected key of a reference, so the
@@ -28,6 +31,7 @@ from app.align import align
 from app.audio_io import SAMPLE_RATE, AudioLoadError, load_upload, write_wav
 from app.autotune import DEFAULT_RETUNE_SPEED_MS, NOTE_NAMES, SCALES, KeyEstimate, autotune, detect_key, scale_grid
 from app.notes import segment_notes
+from app.notes_world import notes_world
 from app.pitch import PitchTrack, track_pitch
 from app.retune import retune
 from app.shift import DEFAULT_CONFIG as NOTES_DEFAULT_CONFIG, LEGACY_CONFIG as NOTES_LEGACY_CONFIG, correct_take
@@ -35,7 +39,7 @@ from app.solo_check import check_solo_vocal
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BACKEND_DIR / "output"
-ENGINES = ("autotune", "retune", "notes", "notes_legacy")
+ENGINES = ("autotune", "retune", "notes", "notes_world", "notes_legacy")
 HQ_SAMPLE_RATE = 44100  # autotune decodes and renders the take at full bandwidth
 FRONTEND_DIST = BACKEND_DIR.parent / "frontend" / "dist"
 
@@ -143,6 +147,16 @@ async def process(
     else:
         if engine == "retune":
             corrected = retune(take_audio.samples, ref_audio.samples, take_audio.sample_rate, alignment, snap_strength)
+        elif engine == "notes_world":
+            corrected = notes_world(
+                take_audio.samples,
+                take_audio.sample_rate,
+                len(ref_audio.samples) / ref_audio.sample_rate,
+                segment_notes(take_track),
+                segment_notes(ref_track),
+                alignment,
+                snap_strength,
+            )
         else:
             corrected = correct_take(
                 take_audio.samples,

@@ -163,3 +163,30 @@ Did not work / not trustworthy:
   to +3 dB. Linear is the correct fade for correlated audio; equal-power
   was chosen because it was asked for, and `crossfade_shape` switches it.
 - Nothing was listened to. Whether it sounds less choppy is unverified.
+
+## m7 - notes engine through the vocoder ("notes_world")
+
+Smoothing the notes engine did not remove its main flaw: every note is
+still time-stretched and pitch-shifted as separate audio. Added
+`notes_world.py`: same per-note pitch decisions, applied to WORLD f0
+frames, with the take's frames warped by the DTW alignment and one
+synthesis at the end. `shift_curve` (the glide) was pulled out of
+`shift.py` so both engines share it.
+
+`scripts/compare_engines.py`, voice-like pair (take ~1 semitone off),
+strength 100: pitch error 20 / 10 / 10 / 10 c (legacy / notes / vocoder /
+retune); timbre drift 0.81 / 0.89 / 1.85 / 1.86 dB.
+
+Same script with the take sung ~5 semitones below the reference:
+timbre drift 8.6 / 9.5 / 2.2 / 1.3 dB, and the vocoder notes engine is
+within 25 cents on 66% of frames vs 59% / 57% for the audio-shifting
+versions. So the vocoder version keeps the voice's timbre on big shifts
+but is measurably worse on small ones (1.9 vs 0.9 dB): the analysis and
+resynthesis change the sound a little even with the pitch left alone (see
+the m5 measurement). The retune engine had 110 c median error on the
+5-semitone case; not investigated.
+
+Not verified: everything above is a measurement on synthetic voices.
+Nothing was listened to, and no real singing recording was available.
+The "silence" column in compare_engines is approximate for the two notes
+engines, whose timeline only roughly follows the alignment.

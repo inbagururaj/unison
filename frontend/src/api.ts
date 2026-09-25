@@ -12,7 +12,7 @@ export interface SoloWarning {
   score: number;
 }
 
-export type Engine = "autotune" | "retune" | "notes" | "notes_legacy";
+export type Engine = "autotune" | "retune" | "notes" | "notes_world" | "notes_legacy";
 
 export const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 export const SCALES = ["major", "minor", "harmonic minor", "major pentatonic", "minor pentatonic", "chromatic"];

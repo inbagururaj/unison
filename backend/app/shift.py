@@ -218,6 +218,25 @@ def smooth_ratios(raw: np.ndarray, breaks_after: np.ndarray, max_step: float) ->
     return np.clip(out, MIN_STRETCH_RATIO, MAX_STRETCH_RATIO)
 
 
+def shift_curve(notes: list[Note], semis: np.ndarray, glide_ms: float):
+    """Pitch shift (semitones) as a function of take time: flat inside each
+    note, ramping linearly between neighbours over glide_ms centred on the
+    join. Returns None when glide_ms is 0 (constant shift per note)."""
+    if glide_ms <= 0 or not notes:
+        return None
+    g = glide_ms / 1000 / 2
+    knots_t, knots_s = [], []
+    for note, s in zip(notes, semis):
+        if note.end - note.start > 2 * g:
+            knots_t += [note.start + g, note.end - g]
+            knots_s += [s, s]
+        else:
+            knots_t.append((note.start + note.end) / 2)
+            knots_s.append(s)
+    knots_t, knots_s = np.array(knots_t), np.array(knots_s)
+    return lambda t: np.interp(t, knots_t, knots_s)
+
+
 def _resample_variable_rate(x: np.ndarray, semitones: np.ndarray) -> np.ndarray:
     """Read x faster where semitones > 0: raises pitch by a curve, not a constant.
 
@@ -288,21 +307,7 @@ def correct_take_debug(
     half = [min(xfade // 2, core_len[i] // 2, core_len[i + 1] // 2) if adjacent[i] else 0 for i in range(n - 1)]
 
     # the shift curve over the take's own timeline
-    shift_at = None
-    if config.glide_ms > 0:
-        g = config.glide_ms / 1000 / 2
-        knots_t, knots_s = [], []
-        for i, note in enumerate(take_notes):
-            if note.end - note.start > 2 * g:
-                knots_t += [note.start + g, note.end - g]
-                knots_s += [semis[i], semis[i]]
-            else:
-                knots_t.append((note.start + note.end) / 2)
-                knots_s.append(semis[i])
-        knots_t, knots_s = np.array(knots_t), np.array(knots_s)
-
-        def shift_at(t):  # noqa: E306
-            return np.interp(t, knots_t, knots_s)
+    shift_at = shift_curve(take_notes, semis, config.glide_ms)
 
     pad = int(config.pad_ms * sr / 1000)
     pieces, join_positions = [], []
