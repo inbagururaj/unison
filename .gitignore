@@ -4,6 +4,7 @@ backend/__pycache__/
 backend/**/__pycache__/
 samples/corrected_check.wav
 samples/eval_output.wav
+samples/eval_take.wav
 frontend/node_modules/
 frontend/dist/
 .env

@@ -111,11 +111,10 @@ For every note in the take:
 Any silent gaps between notes are passed through unchanged from the
 original take, so timing outside of sung notes isn't altered.
 
-## 7. retune.py - the current correction engine
+## 7. retune.py - the "retune" engine
 
-`main.py` now uses this instead of the note-by-note `shift.py` (which is
-still in the repo, and still tested, but no longer called). It works on
-the whole take continuously instead of on chopped-up notes:
+An alternative to the note-by-note `shift.py` (the "notes" engine). It
+works on the whole take continuously instead of on chopped-up notes:
 
 1. **Decompose** both files with the WORLD vocoder into pitch (f0),
    spectral envelope (timbre/vowel) and aperiodicity (breathiness), every
@@ -131,12 +130,54 @@ the whole take continuously instead of on chopped-up notes:
    its character (no chipmunk formant shift) and there are no per-note
    joins to click.
 
+## 8. autotune.py - the "autotune" engine (default)
+
+Works like Auto-Tune or BandLab AutoPitch: snap to a key, never touch
+timing. The reference is only used to find the key.
+
+1. **Detect the key.** Count how long the reference spends on each of
+   the 12 pitch classes (C, C#, D ...) and compare that histogram with
+   the Krumhansl-Kessler profiles, which describe how often each scale
+   degree is used in major and minor keys. The best of the 24 matches
+   wins. Mixing up a key with its relative minor (C major / A minor) does
+   not matter here, because both have the same notes. We also measure
+   how far the reference sits from A440 (e.g. +20 cents) and move the
+   snap grid to match. The UI shows the result and lets you override key
+   and scale (major, minor, harmonic minor, pentatonics, chromatic).
+2. **Decompose the take** with WORLD into pitch, spectral envelope and
+   aperiodicity every 5 ms, rendered at 44.1 kHz (the other engines use
+   22.05 kHz, which drops everything above 11 kHz).
+3. **Choose a target note per frame.** The nearest scale note to a
+   median-filtered pitch (the median over ~160 ms cancels vibrato but
+   keeps note changes sharp), with hysteresis so the target does not
+   flicker between two notes.
+4. **Correct.** The correction (target - pitch) is split into a per-note
+   offset (the note's median error, always applied) and the movement
+   within the note (vibrato, scoops, drift, glides). The retune speed
+   smooths only the movement: 0 ms flattens it (the robotic effect), and
+   slower settings leave it alone while still centring each note.
+   Strength scales the whole correction.
+5. **Resynthesize** with only the pitch changed, so the frame count,
+   formants and breathiness all stay where they were. The output has
+   exactly as many samples as the input.
+6. **Pass through what does not need changing.** Unvoiced audio
+   (consonants, breaths, silence) and phrases already within 3 cents keep
+   the original samples, with 20 ms crossfades, because vocoding is never
+   perfectly transparent.
+
 ## API (main.py)
 
-`POST /api/process` ties all of the above together: decode both
-uploads, track pitch on both, run the solo-vocal check on the
-reference, align the take to the reference, segment both into notes,
-shift the take, and re-track pitch on the corrected result (so the
-"after" line on the chart reflects what was actually produced, not just
-what was intended). It returns the corrected audio's URL, the three
-pitch curves for the chart, the solo warning, and per-stage timings.
+`POST /api/process` takes the two uploads plus `engine` (autotune,
+retune, notes), `snap_strength`, and for autotune `key`, `scale` (or
+"auto") and `retune_speed_ms`. It decodes both uploads, tracks pitch,
+runs the solo-vocal check, detects the key, runs the chosen engine, and
+re-tracks pitch on the corrected result (so the "after" line on the chart
+reflects what was actually produced, not just what was intended). It
+returns URLs for the corrected audio and decoded copies of both inputs,
+the pitch curves for the chart (the reference line is left out for
+autotune, since the reference is never aligned to the take, and the
+scale's notes are sent instead), the detected and used key, the solo
+warning, and per-stage timings.
+
+`POST /api/detect-key` takes just the reference and returns its detected
+key, so the UI can show it as soon as the reference is chosen.

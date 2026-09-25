@@ -77,6 +77,21 @@ input[type="range"] {
   min-width: 160px;
 }
 
+select {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.range-end {
+  font-size: 14px;
+  color: var(--muted);
+}
+
 .snap-value {
   font-variant-numeric: tabular-nums;
   min-width: 40px;
@@ -176,6 +191,13 @@ button:disabled {
   stroke-width: 1;
 }
 
+.chart-scale-line {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.45;
+}
+
 .chart-axis-label {
   fill: var(--muted);
   font-size: 10px;
@@ -231,4 +253,9 @@ button:disabled {
 
 .legend-swatch-after {
   background: var(--accent);
+}
+
+.legend-swatch-scale {
+  background: repeating-linear-gradient(90deg, var(--accent) 0 3px, transparent 3px 7px);
+  opacity: 0.6;
 }

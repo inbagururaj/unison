@@ -1,7 +1,9 @@
 // Hand-coded SVG line chart: x is seconds, y is note name. Each track is
 // drawn as one or more path segments, breaking the line wherever the pitch
 // is unvoiced (null) so gaps show as gaps rather than a straight line
-// across silence.
+// across silence. For the autotune engine there is no reference line
+// (the reference is never aligned to the take); instead the allowed scale
+// notes are drawn as dashed guides.
 
 import type { PitchTrackData } from "./api";
 
@@ -21,9 +23,10 @@ interface Track {
 }
 
 interface Props {
-  reference: PitchTrackData;
+  reference: PitchTrackData | null;
   before: PitchTrackData;
   after: PitchTrackData;
+  scaleNotes?: number[];
 }
 
 const WIDTH = 680;
@@ -61,9 +64,9 @@ function buildPaths(
   return paths;
 }
 
-export default function PitchChart({ reference, before, after }: Props) {
+export default function PitchChart({ reference, before, after, scaleNotes = [] }: Props) {
   const tracks: Track[] = [
-    { label: "reference", data: reference, className: "pitch-line-reference" },
+    ...(reference ? [{ label: "reference", data: reference, className: "pitch-line-reference" }] : []),
     { label: "your take", data: before, className: "pitch-line-before" },
     { label: "corrected", data: after, className: "pitch-line-after" },
   ];
@@ -120,6 +123,19 @@ export default function PitchChart({ reference, before, after }: Props) {
           </text>
         </g>
       ))}
+
+      {scaleNotes
+        .filter((m) => m >= midiMin && m <= midiMax)
+        .map((m) => (
+          <line
+            key={`scale-${m}`}
+            x1={PAD_LEFT}
+            x2={WIDTH - PAD_RIGHT}
+            y1={yScale(m)}
+            y2={yScale(m)}
+            className="chart-scale-line"
+          />
+        ))}
 
       {xTicks.map((s) => (
         <text

@@ -28,7 +28,7 @@ class LoadedAudio:
     duration_seconds: float
 
 
-def _run_ffmpeg(src_path: Path, dst_path: Path) -> None:
+def _run_ffmpeg(src_path: Path, dst_path: Path, sample_rate: int) -> None:
     cmd = [
         "ffmpeg",
         "-y",
@@ -37,7 +37,7 @@ def _run_ffmpeg(src_path: Path, dst_path: Path) -> None:
         "-ac",
         "1",
         "-ar",
-        str(SAMPLE_RATE),
+        str(sample_rate),
         "-vn",
         str(dst_path),
     ]
@@ -49,7 +49,7 @@ def _run_ffmpeg(src_path: Path, dst_path: Path) -> None:
         )
 
 
-def load_upload(raw_bytes: bytes, suffix: str) -> LoadedAudio:
+def load_upload(raw_bytes: bytes, suffix: str, sample_rate: int = SAMPLE_RATE) -> LoadedAudio:
     if not raw_bytes:
         raise AudioLoadError("uploaded file is empty.")
 
@@ -59,7 +59,7 @@ def load_upload(raw_bytes: bytes, suffix: str) -> LoadedAudio:
         dst_path = tmp_dir / "decoded.wav"
         src_path.write_bytes(raw_bytes)
 
-        _run_ffmpeg(src_path, dst_path)
+        _run_ffmpeg(src_path, dst_path, sample_rate)
 
         samples, sr = sf.read(str(dst_path), dtype="float32", always_2d=False)
 

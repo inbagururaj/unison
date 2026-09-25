@@ -1,9 +1,19 @@
 # unison
 
 Upload a vocals-only reference, sing your own take, and get your take
-corrected toward the reference: aligned in time, split into notes, and
-pitch-shifted note by note. Shows a pitch chart comparing the reference,
-your original take, and the corrected result.
+pitch-corrected. Three engines, selectable in the UI so you can A/B them
+on the same recording:
+
+- **autotune** (default) - detects the key/scale of the reference and
+  snaps your take to the nearest note in it, with a retune speed and a
+  strength control. Your timing is never changed.
+- **retune** - time-warps your take onto the reference and follows the
+  reference's pitch line.
+- **notes** - the original engine: splits your take into notes, then
+  stretches and pitch-shifts each one.
+
+A pitch chart compares your original take and the corrected result (plus
+the reference line, or the scale's notes for autotune).
 
 Built for a beginner student hackathon. Everything in scope is listed
 below; there is no live/real-time mode, no song downloading, no vocal
@@ -78,18 +88,26 @@ uv run python ../scripts/make_samples.py
 
 `make_voice_samples.py` builds a more voice-like pair (vowel formants,
 vibrato, glides, breath noise, an off-key drifting take). `evaluate.py`
-runs the corrector on it and prints pitch error in cents against the
-reference, before and after, so tuning changes can be compared by number:
+runs an engine on a pair and prints numbers, so tuning changes can be
+compared by measurement. Numbers do not tell you whether it sounds
+natural - listen to `samples/eval_take.wav` vs `samples/eval_output.wav`
+as well.
 
 ```sh
 cd backend
 uv run python ../scripts/make_voice_samples.py
-uv run python ../scripts/evaluate.py                      # default sample pair, snap 100
-uv run python ../scripts/evaluate.py ref.wav take.wav 70  # your own files, snap 70
+uv run python ../scripts/evaluate.py                                    # autotune, synthetic pair
+uv run python ../scripts/evaluate.py --ref r.wav --take t.wav --speed 60 --strength 80
+uv run python ../scripts/evaluate.py --key A --scale minor              # override the detected key
+uv run python ../scripts/evaluate.py --engine retune                    # the retune engine
 ```
 
-Tunable constants live at the top of `backend/app/retune.py`
-(`RETUNE_SMOOTH_MS`, `TIMING_SMOOTH_SECONDS`, `REF_MEDIAN_FRAMES`).
+For autotune it prints: pitch error to the scale per frame and per note
+(the per-note number averages vibrato out), how much vibrato survived,
+whether length and timing are unchanged, how much the WORLD vocoder
+alone alters the sound, and how much of the output is untouched original
+audio. Tunable constants are at the top of `backend/app/autotune.py`
+(and `retune.py` for the retune engine).
 
 ## Run the tests
 
@@ -98,9 +116,11 @@ cd backend
 uv run pytest
 ```
 
-Tests use synthetic sine signals to check pitch tracking accuracy, note
-segmentation, and that shifting a note by N semitones measures N
-semitones afterward.
+Tests use synthetic signals to check pitch tracking accuracy, note
+segmentation, note shifting, the retune engine, and for autotune: key and
+tuning detection, snapping to the scale, strength, exact timing/length
+preservation, retune speed vs vibrato, and that formants stay put where a
+plain pitch shift moves them.
 
 ## Dependencies and why each one is here
 
@@ -113,8 +133,14 @@ Backend (`backend/pyproject.toml`):
   fallback pitch shifter / time stretcher
 - `numpy` - array math underlying every audio module
 - `soundfile` - reads/writes wav files
-- `pyrubberband` - higher-quality pitch shifting via the rubberband CLI;
-  falls back to librosa automatically if the CLI is missing
+- `pyrubberband` - higher-quality pitch shifting via the rubberband CLI
+  (notes engine only); falls back to librosa automatically if the CLI is
+  missing
+- `pyworld-prebuilt` - the WORLD vocoder (split a voice into pitch,
+  spectral envelope and aperiodicity, then resynthesize), used by the
+  autotune and retune engines. Prebuilt wheels of `pyworld`, which does
+  not build from source on Python 3.13 here
+- `scipy` - filters used by the autotune/retune engines
 - `python-multipart` - required by FastAPI to parse the multipart file
   upload
 - `pytest` (dev only) - test runner
@@ -136,7 +162,18 @@ including the dynamic time warping alignment in `backend/app/align.py`.
 
 ## Known limitations
 
-- The corrected audio can sound robotic, especially at large pitch
+- Not yet checked by ear on a real singing recording. The autotune engine
+  was measured on synthetic voices plus real speech and a real trumpet
+  (see the devlog), not on real singing.
+- Every voiced phrase that gets corrected goes through the WORLD vocoder,
+  which changes the sound even when the pitch is left alone (about as
+  much as librosa's phase vocoder, by the log-spectral measure in
+  `evaluate.py`). Unvoiced audio and already-in-tune phrases are passed
+  through untouched to limit this.
+- Autotune snaps to a key/scale. If the melody uses notes outside the
+  detected scale (chromatic passing notes, borrowed chords), pick
+  `chromatic` or the right scale manually.
+- The notes engine can sound robotic, especially at large pitch
   shifts or stretch ratios near the 0.7-1.4 clamp - this is a known
   tradeoff of phase-vocoder-based pitch/time processing, more so
   without the rubberband CLI installed.
