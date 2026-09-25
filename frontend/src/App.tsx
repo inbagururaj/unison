@@ -17,7 +17,8 @@ type Status = "idle" | "processing" | "done" | "error";
 const ENGINE_HELP: Record<Engine, string> = {
   autotune: "Snaps each moment of your take to the nearest note in the key. Your timing is never changed.",
   retune: "Stretches your take onto the reference's timing and follows the reference's pitch line.",
-  notes: "The original engine: cuts your take into notes, then stretches and shifts each one.",
+  notes: "Cuts your take into notes, then stretches and shifts each one, with tiny segments merged and smooth joins and pitch glides.",
+  notes_legacy: "The notes engine exactly as it was before the smoothing changes, for comparing.",
 };
 
 function sentenceCase(text: string): string {
@@ -171,7 +172,8 @@ export default function App() {
         <select value={engine} onChange={(e) => setEngine(e.target.value as Engine)}>
           <option value="autotune">Autotune (key/scale)</option>
           <option value="retune">Retune (follow reference)</option>
-          <option value="notes">Notes (original)</option>
+          <option value="notes">Notes (smoothed)</option>
+          <option value="notes_legacy">Notes (before smoothing)</option>
         </select>
       </section>
 

@@ -91,6 +91,31 @@ the median so a brief blip inside the note doesn't skew its pitch.
 
 ## 6. shift.py - rebuilding the take note by note
 
+Two versions live in this file. The engine dropdown offers both:
+"Notes (smoothed)" is the default `DEFAULT_CONFIG`; "Notes (before
+smoothing)" is `LEGACY_CONFIG`, the original code left untouched. The
+description below is the original; the smoothed version adds, in order
+(each stage is a preset in `shift.STAGES`):
+
+1. **Merge short segments** (`notes.merge_short_notes`): fragments of one
+   note (neighbours within 60 ms and 0.5 semitone) are joined, and any
+   segment under 140 ms is absorbed into the neighbour with the closest
+   pitch, so a sustained note is not chopped up.
+2. **Smooth stretch ratios**: the per-note ratios are averaged with
+   their neighbours, and the change between adjacent notes is limited to
+   0.08 (runs are split at rests longer than 150 ms).
+3. **Context padding**: each note is stretched and shifted together with
+   50 ms of real audio on each side, and the padding is trimmed
+   afterwards, so the phase vocoder does not start cold at the edge.
+4. **Longer crossfade**: touching notes are tiled at the middle of the
+   gap and overlapped by 40 ms with an equal-power fade (was 15 ms
+   linear); gaps with silence in them are left alone. The overlap keeps
+   the total length, unlike the original.
+5. **Pitch glide**: instead of one constant shift per note, the shift is
+   interpolated between note centres (a 60 ms ramp centred on each
+   join) by reading the audio at a variable rate and then time-stretching
+   back to the target length.
+
 For every note in the take:
 
 1. **Find the matching reference note.** We map the take note's

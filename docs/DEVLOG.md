@@ -125,3 +125,41 @@ Verified (numbers from `scripts/evaluate.py`, default settings: strength
   1-semitone shift).
 - Not verified: how any of it sounds on a real singing recording. None
   was available, and nothing here was listened to.
+
+## m6 - smoothing the notes engine
+
+The notes engine sounded choppy even though pitch and timing measured
+fine. `scripts/diagnose_notes.py` reproduces its decisions per stage and
+measures the actual output. Diagnosis on the sample pair: 9 segments for 7
+notes (one 70 ms), one stretch-ratio clamp hit, ratios changing by up to
+0.27 between neighbours, a 2.1 semitone step in pitch shift between
+touching notes, and a 15 ms linear crossfade with every chunk processed
+cold. The samples are clean synthetic tones, so nothing here is dramatic;
+real singing will produce far more tiny segments.
+
+Measured after each stage (voice-like pair; `python scripts/diagnose_notes.py`):
+
+- Segments 9 -> 7, segments under 150 ms 1 -> 0, clamp hits 1 -> 0 (stage 1).
+- Largest ratio change between neighbours 0.27 -> 0.08 (stage 2). Cost:
+  the output length drifts further from the reference (7 ms -> 78 ms
+  difference), because ratios no longer follow the DTW target exactly.
+- Pitch-shift step between touching notes 2.07 -> 0.69 semitone per 20 ms
+  (stage 5). Extra pitch step added at joins (compared with the take at
+  the same spot), max: legacy +2.93, then +1.87, +1.91, +3.68, +2.05,
+  +0.75 st through the stages; mean +0.82 -> -0.24 st. Stage 3 (padding)
+  is not monotonic on this metric.
+- Pitch error vs the reference stays at 10 cents median (legacy 20).
+
+Did not work / not trustworthy:
+
+- Loudness at the joins and a "click ratio" did not separate the stages:
+  after subtracting the same measurement in the original take they move
+  by +-3 dB with no trend, dominated by where the join lands after
+  stretching.
+- The pitch-step metric is unusable on the sine pair (the tracker returns
+  nothing or octave errors in the faded note edges).
+- An equal-power fade assumes the two sides are uncorrelated. Here both
+  sides are the same audio, so at the middle of the overlap it can add up
+  to +3 dB. Linear is the correct fade for correlated audio; equal-power
+  was chosen because it was asked for, and `crossfade_shape` switches it.
+- Nothing was listened to. Whether it sounds less choppy is unverified.

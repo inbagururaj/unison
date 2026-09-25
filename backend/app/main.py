@@ -4,7 +4,9 @@
 #
 #   autotune  snap the take to the reference's detected key/scale, timing untouched
 #   retune    time-warp the take onto the reference and follow its pitch contour
-#   notes     the original note-by-note shift and stretch
+#   notes     note-by-note shift and stretch, smoothed (merged segments, limited
+#             ratio changes, context padding, longer crossfade, pitch glide)
+#   notes_legacy  the same engine exactly as it was before the smoothing, for A/B
 #
 # POST /api/detect-key returns just the detected key of a reference, so the
 # UI can show it before processing. In production this same app also serves the built frontend, so a judge can
@@ -28,12 +30,12 @@ from app.autotune import DEFAULT_RETUNE_SPEED_MS, NOTE_NAMES, SCALES, KeyEstimat
 from app.notes import segment_notes
 from app.pitch import PitchTrack, track_pitch
 from app.retune import retune
-from app.shift import correct_take
+from app.shift import DEFAULT_CONFIG as NOTES_DEFAULT_CONFIG, LEGACY_CONFIG as NOTES_LEGACY_CONFIG, correct_take
 from app.solo_check import check_solo_vocal
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BACKEND_DIR / "output"
-ENGINES = ("autotune", "retune", "notes")
+ENGINES = ("autotune", "retune", "notes", "notes_legacy")
 HQ_SAMPLE_RATE = 44100  # autotune decodes and renders the take at full bandwidth
 FRONTEND_DIST = BACKEND_DIR.parent / "frontend" / "dist"
 
@@ -149,6 +151,7 @@ async def process(
                 segment_notes(ref_track),
                 alignment,
                 snap_strength,
+                NOTES_LEGACY_CONFIG if engine == "notes_legacy" else NOTES_DEFAULT_CONFIG,
             )
         t = mark(engine, t)
 

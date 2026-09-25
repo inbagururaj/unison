@@ -80,3 +80,59 @@ def segment_notes(track: PitchTrack) -> list[Note]:
 
     close_run(n)
     return notes
+
+
+def merge_short_notes(
+    notes: list[Note],
+    min_duration: float = 0.14,
+    max_gap: float = 0.06,
+    same_pitch_tol: float = 0.5,
+) -> list[Note]:
+    """Stop a sustained note from being chopped into pieces.
+
+    1. Fragments of one note - neighbours closer than max_gap in time and
+       within same_pitch_tol semitones - are joined.
+    2. Any note shorter than min_duration is absorbed into the neighbour
+       (within max_gap) whose pitch is closest. A short note with no such
+       neighbour is a real short note and stays.
+
+    Merged pitch is the duration-weighted mean of the parts.
+    """
+
+    def join(a: Note, b: Note) -> Note:
+        da, db = max(a.end - a.start, 1e-6), max(b.end - b.start, 1e-6)
+        return Note(start=a.start, end=b.end, midi=(a.midi * da + b.midi * db) / (da + db))
+
+    def touching(a: Note, b: Note) -> bool:
+        return b.start - a.end <= max_gap
+
+    merged = list(notes)
+
+    changed = True
+    while changed:
+        changed = False
+        for i in range(len(merged) - 1):
+            a, b = merged[i], merged[i + 1]
+            if touching(a, b) and abs(a.midi - b.midi) <= same_pitch_tol:
+                merged[i : i + 2] = [join(a, b)]
+                changed = True
+                break
+
+    while True:
+        short = [i for i, n in enumerate(merged) if n.end - n.start < min_duration]
+        target = None
+        for i in sorted(short, key=lambda k: merged[k].end - merged[k].start):
+            options = []
+            if i > 0 and touching(merged[i - 1], merged[i]):
+                options.append(i - 1)
+            if i + 1 < len(merged) and touching(merged[i], merged[i + 1]):
+                options.append(i + 1)
+            if options:
+                j = min(options, key=lambda k: abs(merged[k].midi - merged[i].midi))
+                target = (i, j)
+                break
+        if target is None:
+            return merged
+        i, j = target
+        lo, hi = min(i, j), max(i, j)
+        merged[lo : hi + 1] = [join(merged[lo], merged[hi])]
