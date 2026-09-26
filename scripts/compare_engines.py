@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
 
 from app import shift  # noqa: E402
-from app.align import align  # noqa: E402
+from app.align import ALIGN_CONFIGS, align  # noqa: E402
 from app.notes import segment_notes  # noqa: E402
 from app.notes_world import notes_world  # noqa: E402
 from app.pitch import track_pitch  # noqa: E402
@@ -47,12 +47,13 @@ def main():
     p.add_argument("--ref", default=ROOT / "samples/voice_reference.wav")
     p.add_argument("--take", default=ROOT / "samples/voice_take.wav")
     p.add_argument("--strength", type=float, default=100.0)
+    p.add_argument("--align", choices=sorted(ALIGN_CONFIGS), default="default", help="alignment config to A/B")
     a = p.parse_args()
     ref, sr = sf.read(str(a.ref), dtype="float32")
     take, _ = sf.read(str(a.take), dtype="float32")
 
     ref_track, take_track = track_pitch(ref, sr), track_pitch(take, sr)
-    alignment = align(ref, sr, take, sr)
+    alignment = align(ref, sr, take, sr, ALIGN_CONFIGS[a.align])
     ref_notes, take_notes = segment_notes(ref_track), segment_notes(take_track)
 
     runs = {
@@ -71,7 +72,7 @@ def main():
     voiced_level = float(np.sqrt(np.mean(take[np.repeat(~quiet, hop)[: len(take)]] ** 2))) if (~quiet).any() else 1.0
 
     sf.write(str(ROOT / "samples/engines_take.wav"), take, sr)
-    print(f"take {len(take) / sr:.2f}s, reference {len(ref) / sr:.2f}s, strength {a.strength:.0f}")
+    print(f"take {len(take) / sr:.2f}s, reference {len(ref) / sr:.2f}s, strength {a.strength:.0f}, alignment {a.align}")
     print(f"{'engine':14s} {'time':>6s} {'pitch err':>10s} {'within 25c':>10s} {'timbre drift':>13s} {'silence':>9s} {'length diff':>12s}")
     for name, run in runs.items():
         t0 = time.perf_counter()

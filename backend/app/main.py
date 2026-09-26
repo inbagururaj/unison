@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 import uuid
 from pathlib import Path
@@ -29,7 +30,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.align import align
+from app.align import ALIGN_CONFIGS, align
 from app.audio_io import SAMPLE_RATE, AudioLoadError, load_upload, write_wav
 from app.autotune import DEFAULT_RETUNE_SPEED_MS, NOTE_NAMES, SCALES, KeyEstimate, autotune, detect_key, scale_grid
 from app.notes import segment_notes
@@ -42,6 +43,11 @@ from app.solo_check import check_solo_vocal
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BACKEND_DIR / "output"
 ENGINES = ("autotune", "retune", "notes", "notes_world", "full_lock", "notes_legacy")
+# A/B switch for the alignment: UNISON_ALIGN=legacy runs the original DTW
+# (see AlignConfig in align.py); anything else, or unset, the default.
+ALIGN_NAME = os.environ.get("UNISON_ALIGN", "default")
+ALIGN_CONFIG_NAME = ALIGN_NAME if ALIGN_NAME in ALIGN_CONFIGS else "default"
+ALIGN_CONFIG = ALIGN_CONFIGS[ALIGN_CONFIG_NAME]
 HQ_SAMPLE_RATE = 44100  # autotune decodes and renders the take at full bandwidth
 FRONTEND_DIST = BACKEND_DIR.parent / "frontend" / "dist"
 
@@ -140,7 +146,9 @@ async def process(
     grid = scale_grid(tonic, used_scale, detected.tuning_cents)
     t = mark("key_detection", t)
 
-    alignment = align(ref_audio.samples, ref_audio.sample_rate, take_audio.samples, take_audio.sample_rate)
+    alignment = align(
+        ref_audio.samples, ref_audio.sample_rate, take_audio.samples, take_audio.sample_rate, ALIGN_CONFIG
+    )
     t = mark("alignment", t)
 
     lock_target: PitchTrack | None = None
@@ -207,6 +215,10 @@ async def process(
     else:
         ref_times = ref_track.times
         take_times = np.interp(take_track.times, alignment.take_times, alignment.ref_times)
+        # the alignment may leave quiet take material before/after the singing
+        # unused; np.interp would pile it onto the chart's edges, so hide it
+        unused = (take_track.times < alignment.take_times[0]) | (take_track.times > alignment.take_times[-1])
+        take_track = PitchTrack(times=take_track.times, midi=take_track.midi, voiced=take_track.voiced & ~unused)
 
     timings["total"] = round(time.perf_counter() - t_start, 3)
 
@@ -216,6 +228,7 @@ async def process(
 
     return {
         "engine": engine,
+        "alignment": ALIGN_CONFIG_NAME,
         "corrected_audio_url": f"/output/{output_name}",
         "take_audio_url": f"/output/{run_id}_take.wav",
         "reference_audio_url": f"/output/{run_id}_reference.wav",
