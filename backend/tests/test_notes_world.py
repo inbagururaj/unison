@@ -90,3 +90,36 @@ def test_big_upward_shift_keeps_formants_where_a_plain_pitch_shift_moves_them():
     naive = librosa.effects.pitch_shift(take, sr=SR, n_steps=7.0)
     assert abs(np.median(track_pitch(out, SR).midi[track_pitch(out, SR).voiced]) - 55.0) < 0.3
     assert distance(out) < 0.6 * distance(naive)
+
+
+def test_full_lock_fills_brief_gaps_but_not_real_silence():
+    from app.notes_world import _fill_short_gaps, full_lock
+
+    v = np.array([1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0], dtype=bool)
+    filled = _fill_short_gaps(v, 3)
+    assert filled[2:4].all()  # 2-frame gap between voiced runs: bridged
+    assert not filled[6:12].any()  # 6-frame gap: left alone
+    assert not filled[14:].any()  # trailing silence: left alone
+
+    take, take_notes, ref_notes, alignment, ref_dur = _pair()
+    audio, target = full_lock(take, SR, ref_dur, take_notes, ref_notes, alignment)
+    assert abs(len(audio) / SR - ref_dur) < 0.05
+    # full strength: each note lands on its reference note
+    for got, note in zip(_note_medians(audio, ref_notes), ref_notes):
+        assert abs(got - note.midi) < 0.3
+    # the 0.3 s rest between the notes is longer than the gap threshold: still unvoiced in the target
+    mid = (target.times > 0.78) & (target.times < 0.92)
+    assert not target.voiced[mid].any()
+
+
+def test_full_lock_target_has_no_dip_across_a_brief_gap():
+    from app.notes_world import full_lock
+
+    take, take_notes, ref_notes, alignment, ref_dur = _pair(rest=0.06)
+    _, target = full_lock(take, SR, ref_dur, take_notes, ref_notes, alignment)
+    first_end, second_start = 0.7, 0.76
+    gap = (target.times > first_end + 0.01) & (target.times < second_start - 0.01)
+    assert target.voiced[gap].all()
+    # and the curve crosses it without a jump: no frame-to-frame step over 2 semitones
+    window = (target.times > first_end - 0.05) & (target.times < second_start + 0.05)
+    assert np.abs(np.diff(target.midi[window])).max() < 2.0

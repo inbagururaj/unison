@@ -487,7 +487,7 @@ fieldset.is-dimmed {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 8px;
+  margin-top: 28px;
 }
 
 .strength {
@@ -588,4 +588,66 @@ fieldset.is-dimmed {
 .file-chosen {
   flex: 1 1 8em;
   min-width: min(100%, 8em);
+}
+
+.engine-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.engine-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  color: var(--muted);
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+
+.engine-card:hover {
+  border-color: var(--border);
+}
+
+.engine-card:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.engine-card.is-selected {
+  border: 2px solid var(--accent);
+  padding: 15px; /* the 2px border replaces 1px, so the card does not grow */
+  background: rgba(251, 146, 60, 0.1);
+  color: var(--ink);
+}
+
+.engine-icon {
+  color: var(--muted);
+}
+
+.engine-card.is-selected .engine-icon {
+  color: var(--accent);
+}
+
+.engine-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.engine-help {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+fieldset:disabled .engine-card {
+  cursor: not-allowed;
 }

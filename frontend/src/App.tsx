@@ -14,6 +14,35 @@ import PitchChart from "./PitchChart";
 
 type Status = "idle" | "processing" | "done" | "error";
 
+function WaveLines({ count }: { count: number }) {
+  // `count` horizontal sine-wave lines: more lines reads as a stronger setting
+  const gap = 5;
+  const top = 12 - ((count - 1) * gap) / 2;
+  return (
+    <svg viewBox="0 0 32 24" width="32" height="24" aria-hidden="true" className="engine-icon">
+      {Array.from({ length: count }, (_, i) => {
+        const y = top + i * gap;
+        return (
+          <path
+            key={i}
+            d={`M2 ${y} q4 -4 7 0 t7 0 t7 0 t7 0`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+const ENGINE_CHOICES: { value: Engine; title: string; help: string; lines: number }[] = [
+  { value: "notes_world", title: "Strong", help: "Natural pitch matching, keeps more of your voice.", lines: 2 },
+  { value: "full_lock", title: "Stronger", help: "Locks fully to the reference, heavier autotune sound.", lines: 3 },
+];
+
+
 function sentenceCase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -22,9 +51,9 @@ export default function App() {
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [takeBlob, setTakeBlob] = useState<File | Blob | null>(null);
   const [takeLabel, setTakeLabel] = useState<string>("");
-  const [snapStrength, setSnapStrength] = useState(70);
-  // only the vocoder engine is exposed; the others stay in the backend and the gated sections below
-  const engine = "notes_world" as Engine;
+  // both exposed engines run at full correction; the others stay in the backend and the gated sections below
+  const [engine, setEngine] = useState<Engine>("notes_world");
+  const snapStrength = 100;
   const [retuneSpeedMs, setRetuneSpeedMs] = useState(120);
   const [keyChoice, setKeyChoice] = useState("auto");
   const [scaleChoice, setScaleChoice] = useState("auto");
@@ -254,30 +283,23 @@ export default function App() {
       {hasBothFiles && (
             <>
               <fieldset className={`strength${processing ? " is-dimmed" : ""}`} disabled={processing}>
-                <legend className="visually-hidden">Strength</legend>
-                <div className="step">
-                  <h2>Strength</h2>
-                  <p className="step-help">
-                    {engine === "autotune"
-                      ? "How much of the distance to the nearest note is corrected."
-                      : "How closely your take is pulled toward the reference pitch."}
-                  </p>
-                  <div className="row">
-                    <div className="slider-with-labels">
+                <legend className="visually-hidden">Correction strength</legend>
+                <div className="engine-choices">
+                  {ENGINE_CHOICES.map((c) => (
+                    <label key={c.value} className={`engine-card${engine === c.value ? " is-selected" : ""}`}>
                       <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        value={snapStrength}
-                        onChange={(e) => setSnapStrength(Number(e.target.value))}
+                        type="radio"
+                        name="engine"
+                        value={c.value}
+                        checked={engine === c.value}
+                        onChange={() => setEngine(c.value)}
+                        className="visually-hidden"
                       />
-                      <div className="slider-ends" aria-hidden="true">
-                        <span>0%</span>
-                        <span>100%</span>
-                      </div>
-                    </div>
-                    <span className="snap-value">{snapStrength}%</span>
-                  </div>
+                      <WaveLines count={c.lines} />
+                      <span className="engine-title">{c.title}</span>
+                      <span className="engine-help">{c.help}</span>
+                    </label>
+                  ))}
                 </div>
               </fieldset>
 
