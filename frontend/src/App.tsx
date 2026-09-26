@@ -9,19 +9,10 @@ import {
   type Engine,
   type ProcessResult,
 } from "./api";
-import FileSlot from "./FileSlot";
+import FileSlot, { MicIcon } from "./FileSlot";
 import PitchChart from "./PitchChart";
 
 type Status = "idle" | "processing" | "done" | "error";
-
-const ENGINE_HELP: Record<Engine, string> = {
-  autotune: "Snaps each moment of your take to the nearest note in the key. Your timing is never changed.",
-  retune: "Stretches your take onto the reference's timing and follows the reference's pitch line.",
-  notes: "Cuts your take into notes, then stretches and shifts each one, with tiny segments merged and smooth joins and pitch glides.",
-  notes_world:
-    "The notes engine's pitch decisions applied to the whole take at once through the vocoder: nothing is cut, stretched or stitched, and your voice's timbre is kept.",
-  notes_legacy: "The notes engine exactly as it was before the smoothing changes, for comparing.",
-};
 
 function sentenceCase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -126,53 +117,80 @@ export default function App() {
     }
   }
 
-  const canProcess = referenceFile !== null && takeBlob !== null && status !== "processing";
+  const hasBothFiles = referenceFile !== null && takeBlob !== null;
+  const canProcess = hasBothFiles && status !== "processing";
+  const processing = status === "processing";
+  const showResults = status === "done" && result !== null;
+
+  function startOver() {
+    if (isRecording) stopRecording();
+    setReferenceFile(null);
+    setTakeBlob(null);
+    setTakeLabel("");
+    setDetectedKey(null);
+    setKeyStatus("idle");
+    setResult(null);
+    setErrorMessage(null);
+    setStatus("idle");
+  }
 
   return (
     <main className="page">
       <header className="intro">
         <h1>Unison</h1>
-        <p>Upload a reference vocal, sing your own take, and get it corrected toward the reference's pitch and timing.</p>
+        <p>Upload a reference vocal and your take, and get your take matched to the reference's notes.</p>
       </header>
 
-      <section className="step">
-        <h2>1. Reference vocal</h2>
-        <p className="step-help">A vocals-only recording (audio or video) to sing along to.</p>
-        <FileSlot
-          label="Reference vocal file"
-          fileName={referenceFile ? referenceFile.name : ""}
-          onChange={chooseReference}
-        />
-      </section>
+      {!showResults && (
+        <>
+          <fieldset className={`inputs${processing ? " is-dimmed" : ""}`} disabled={processing}>
+            <legend className="visually-hidden">Audio inputs</legend>
+            <div className="step dropcard">
+              <h2>Reference vocal</h2>
+              <p className="step-help">A vocals-only recording (audio or video) to sing along to.</p>
+              <FileSlot
+                label="Reference vocal file"
+                fileName={referenceFile ? referenceFile.name : ""}
+                onChange={chooseReference}
+              />
+            </div>
 
-      <section className="step">
-        <h2>2. Your take</h2>
-        <p className="step-help">Record in the browser, or upload a file.</p>
-        <div className="row">
-          {!isRecording ? (
-            <button type="button" className="button-secondary" onClick={startRecording}>
-              Record
-            </button>
-          ) : (
-            <button type="button" className="button-secondary" onClick={stopRecording}>
-              Stop ({recordSeconds}s)
-            </button>
-          )}
-          <FileSlot
-            label="Your take file"
-            fileName={takeLabel}
-            onChange={(file) => {
-              setTakeBlob(file);
-              setTakeLabel(file ? file.name : "");
-            }}
-          />
-        </div>
-      </section>
-
-      <section className="step">
-        <h2>Match reference notes</h2>
-        <p className="step-help">{ENGINE_HELP[engine]}</p>
-      </section>
+            <div className="step dropcard">
+              <h2>Your take</h2>
+              <p className="step-help">Upload a file, or record with your microphone.</p>
+              <FileSlot
+                label="Your take file"
+                fileName={takeLabel}
+                onChange={(file) => {
+                  setTakeBlob(file);
+                  setTakeLabel(file ? file.name : "");
+                }}
+                extra={
+                  isRecording ? (
+                    <button
+                      type="button"
+                      className="button-secondary mic-button is-recording"
+                      aria-label={`Stop recording (${recordSeconds}s)`}
+                      onClick={stopRecording}
+                    >
+                      <span className="stop-square" aria-hidden="true" />
+                      {recordSeconds}s
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="button-secondary mic-button"
+                      aria-label="Record from microphone"
+                      title="Record from microphone"
+                      onClick={startRecording}
+                    >
+                      <MicIcon />
+                    </button>
+                  )
+                }
+              />
+            </div>
+          </fieldset>
 
       {engine === "autotune" && (
         <section className="step">
@@ -233,60 +251,79 @@ export default function App() {
         </section>
       )}
 
-      <section className="step">
-        <h2>Strength</h2>
-        <p className="step-help">
-          {engine === "autotune"
-            ? "How much of the distance to the nearest note is corrected."
-            : "How closely your take is pulled toward the reference pitch."}
-        </p>
-        <div className="row">
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={snapStrength}
-            onChange={(e) => setSnapStrength(Number(e.target.value))}
-          />
-          <span className="snap-value">{snapStrength}%</span>
-        </div>
-      </section>
+      {hasBothFiles && (
+            <>
+              <fieldset className={`strength${processing ? " is-dimmed" : ""}`} disabled={processing}>
+                <legend className="visually-hidden">Strength</legend>
+                <div className="step">
+                  <h2>Strength</h2>
+                  <p className="step-help">
+                    {engine === "autotune"
+                      ? "How much of the distance to the nearest note is corrected."
+                      : "How closely your take is pulled toward the reference pitch."}
+                  </p>
+                  <div className="row">
+                    <div className="slider-with-labels">
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={snapStrength}
+                        onChange={(e) => setSnapStrength(Number(e.target.value))}
+                      />
+                      <div className="slider-ends" aria-hidden="true">
+                        <span>0%</span>
+                        <span>100%</span>
+                      </div>
+                    </div>
+                    <span className="snap-value">{snapStrength}%</span>
+                  </div>
+                </div>
+              </fieldset>
 
-      <section className="step">
-        <button type="button" className="button-primary" disabled={!canProcess} onClick={handleProcess}>
-          {status === "processing" ? "Processing..." : "Process"}
-        </button>
-        {status === "error" && errorMessage && <p className="error-text">{errorMessage}</p>}
-      </section>
+              <div className="process-row">
+                <button
+                  type="button"
+                  className={`button-primary${processing ? " is-processing" : ""}`}
+                  disabled={!canProcess}
+                  aria-busy={processing}
+                  onClick={handleProcess}
+                >
+                  {processing ? (
+                    <>
+                      <span className="bars" aria-hidden="true">
+                        <i />
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      Processing...
+                    </>
+                  ) : (
+                    "Process"
+                  )}
+                </button>
+                {status === "error" && errorMessage && <p className="error-text">{errorMessage}</p>}
+              </div>
+            </>
+          )}
+          {!hasBothFiles && errorMessage && <p className="error-text">{errorMessage}</p>}
+          {processing && <p className="loading-text">Analyzing and correcting your take...</p>}
+        </>
+      )}
 
-      {status === "processing" && <p className="loading-text">Analyzing and correcting your take...</p>}
-
-      {result && (
+      {showResults && result && (
         <section className="results">
-          <h2>Results</h2>
-          <p className="step-help">
-            Engine: {result.engine}
-            {result.engine === "autotune" && ` · Key: ${sentenceCase(result.key.used.name)}`}
-          </p>
+          <div className="results-head">
+            <h2>Results</h2>
+            <button type="button" className="button-secondary" onClick={startOver}>
+              New comparison
+            </button>
+          </div>
 
           {result.solo_warning.warn && (
             <p className="warning-text">Warning: {sentenceCase(result.solo_warning.reason)}</p>
           )}
-
-          <div className="players">
-            <div className="player">
-              <span className="player-label">Your take</span>
-              <audio controls src={result.take_audio_url} />
-            </div>
-            <div className="player">
-              <span className="player-label">Corrected</span>
-              <audio controls src={result.corrected_audio_url} />
-            </div>
-            <div className="player">
-              <span className="player-label">Reference</span>
-              <audio controls src={result.reference_audio_url} />
-            </div>
-          </div>
 
           <PitchChart
             reference={result.pitch.reference}
@@ -296,11 +333,26 @@ export default function App() {
           />
           <div className="chart-legend">
             <span className="legend-item"><i className="legend-swatch legend-swatch-reference" /> Reference</span>
-            <span className="legend-item"><i className="legend-swatch legend-swatch-before" /> Your take</span>
+            <span className="legend-item"><i className="legend-swatch legend-swatch-before" /> Original</span>
             <span className="legend-item"><i className="legend-swatch legend-swatch-after" /> Corrected</span>
             {result.pitch.scale_notes.length > 0 && (
               <span className="legend-item"><i className="legend-swatch legend-swatch-scale" /> Scale notes</span>
             )}
+          </div>
+
+          <div className="players">
+            <div className="player">
+              <span className="player-label">Original</span>
+              <audio controls src={result.take_audio_url} />
+            </div>
+            <div className="player">
+              <span className="player-label">Reference</span>
+              <audio controls src={result.reference_audio_url} />
+            </div>
+            <div className="player">
+              <span className="player-label">Corrected</span>
+              <audio controls src={result.corrected_audio_url} />
+            </div>
           </div>
         </section>
       )}
