@@ -32,7 +32,8 @@ export default function App() {
   const [takeBlob, setTakeBlob] = useState<File | Blob | null>(null);
   const [takeLabel, setTakeLabel] = useState<string>("");
   const [snapStrength, setSnapStrength] = useState(70);
-  const [engine, setEngine] = useState<Engine>("autotune");
+  // only the vocoder engine is exposed; the others stay in the backend and the gated sections below
+  const engine = "notes_world" as Engine;
   const [retuneSpeedMs, setRetuneSpeedMs] = useState(120);
   const [keyChoice, setKeyChoice] = useState("auto");
   const [scaleChoice, setScaleChoice] = useState("auto");
@@ -169,15 +170,8 @@ export default function App() {
       </section>
 
       <section className="step">
-        <h2>Engine</h2>
+        <h2>Match reference notes</h2>
         <p className="step-help">{ENGINE_HELP[engine]}</p>
-        <select value={engine} onChange={(e) => setEngine(e.target.value as Engine)}>
-          <option value="autotune">Autotune (key/scale)</option>
-          <option value="retune">Retune (follow reference)</option>
-          <option value="notes">Notes (smoothed)</option>
-          <option value="notes_world">Notes (vocoder)</option>
-          <option value="notes_legacy">Notes (before smoothing)</option>
-        </select>
       </section>
 
       {engine === "autotune" && (
