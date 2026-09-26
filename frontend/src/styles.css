@@ -162,8 +162,9 @@ h2 {
 /* file slot: button + filename that ellipsizes instead of being cut to a length */
 .file-slot {
   display: flex;
+  flex-wrap: wrap; /* the filename/status drops to its own line instead of being squeezed */
   align-items: center;
-  gap: 12px;
+  gap: 8px 12px;
   min-width: 0;
   flex: 1 1 260px;
 }
@@ -581,4 +582,10 @@ fieldset.is-dimmed {
   gap: 8px;
   color: var(--ink);
   font-weight: 700;
+}
+
+/* never squeeze the name/status below a readable width: wrap first, ellipsis only once it has a full line */
+.file-chosen {
+  flex: 1 1 8em;
+  min-width: min(100%, 8em);
 }
