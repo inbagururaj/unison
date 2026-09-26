@@ -553,3 +553,32 @@ fieldset.is-dimmed {
   width: 22px;
   height: 22px;
 }
+
+/* results: Original and Reference are muted, the final output stands out */
+.player {
+  padding: 10px 12px;
+  border: 1px solid var(--divider);
+  border-radius: 8px;
+}
+
+.player:not(.player-final) .player-label {
+  color: var(--muted);
+}
+
+.player:not(.player-final) audio {
+  opacity: 0.8;
+}
+
+.player-final {
+  border: 2px solid var(--accent);
+  background: rgba(251, 146, 60, 0.1);
+  padding: 12px 14px;
+}
+
+.player-final .player-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 700;
+}

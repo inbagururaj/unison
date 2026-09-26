@@ -349,8 +349,8 @@ export default function App() {
               <span className="player-label">Reference</span>
               <audio controls src={result.reference_audio_url} />
             </div>
-            <div className="player">
-              <span className="player-label">Corrected</span>
+            <div className="player player-final">
+              <span className="player-label">Final result</span>
               <audio controls src={result.corrected_audio_url} />
             </div>
           </div>
