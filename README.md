@@ -6,7 +6,7 @@ Real autotune works fine. This is different, it doesn't snap your voice to a gen
 
 Upload a reference vocal (vocals only, no instrumental) and your own take, recorded in the browser or uploaded. Unison lines them up in time, finds the notes in the reference, and reshapes your take's pitch to match. It uses a vocoder that keeps pitch and voice character separate, so the result still sounds like you, just matched to their notes.
 
-## What I learned
+## What we learned
 
 First version cut the take into individual notes, stretched each one to match timing, then pitch-shifted it. Pitch was accurate but it sounded choppy, and big shifts gave it a chipmunk effect.
 
@@ -55,4 +55,4 @@ For development with hot reload, run the backend with `--reload` and `npm run de
 
 ## AI usage
 
-Used Claude Code throughout to implement, debug, and work through approaches that weren't sounding right. The idea and the calls on what actually sounded good were mine, building this in the first place, and dropping the chopped-note approach for the vocoder after comparing them. Most of the implementation, alignment code, pitch-shifting, UI, was built with heavy AI assistance based on that direction.
+Used Claude Code throughout to implement, debug, and work through approaches that weren't sounding right. The idea and the calls on what actually sounded good were ours, building this in the first place, and dropping the chopped-note approach for the vocoder after comparing them. Most of the implementation, alignment code, pitch-shifting, UI, was built with heavy AI assistance based on that direction.
