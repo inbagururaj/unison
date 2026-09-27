@@ -651,3 +651,17 @@ fieldset.is-dimmed {
 fieldset:disabled .engine-card {
   cursor: not-allowed;
 }
+
+.intro h1 {
+  margin: 0;
+  line-height: 0; /* no text: the image sets the height */
+}
+
+.logo {
+  display: block;
+  margin: 0 auto;
+  width: min(170px, 50vw);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}

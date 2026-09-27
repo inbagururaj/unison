@@ -166,7 +166,9 @@ export default function App() {
   return (
     <main className="page">
       <header className="intro">
-        <h1>Unison</h1>
+        <h1>
+          <img src="/logo.png" alt="Unison" className="logo" width={200} height={200} />
+        </h1>
         <p>Upload a reference vocal and your take, and get your take matched to the reference's notes.</p>
       </header>
 
