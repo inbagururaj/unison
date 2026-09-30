@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ApiError,
   detectKey,
@@ -12,6 +12,7 @@ import {
 import FileSlot, { MicIcon } from "./FileSlot";
 import PitchChart from "./PitchChart";
 import { useDualPlayback } from "./useDualPlayback";
+import type { CheckedTracks, TrackKey } from "./useDualPlayback";
 
 type Status = "idle" | "processing" | "done" | "error";
 
@@ -64,10 +65,35 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<ProcessResult | null>(null);
   const [selectedTime, setSelectedTime] = useState<number | null>(null);
+  const [checked, setChecked] = useState<CheckedTracks>({ reference: false, before: false, after: true });
   const playback = useDualPlayback(
     result?.reference_audio_url ?? null,
+    result?.take_audio_url ?? null,
     result?.corrected_audio_url ?? null,
+    checked,
   );
+  const togglePauseRef = useRef(playback.togglePause);
+  togglePauseRef.current = playback.togglePause;
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.code !== "Space" || e.repeat) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.closest("input, textarea, select") || target.isContentEditable)) return;
+      e.preventDefault();
+      togglePauseRef.current();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  function toggleTrack(key: TrackKey, el: HTMLElement) {
+    el.blur();
+    setChecked((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      return next.reference || next.before || next.after ? next : prev;
+    });
+  }
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -377,12 +403,34 @@ export default function App() {
             onSelectTime={handleSelectTime}
             playheadTime={playback.playheadTime}
             isPlaying={playback.isPlaying}
+            isPaused={playback.isPaused}
+            checked={checked}
             onStop={playback.stop}
           />
-          <div className="chart-legend">
-            <span className="legend-item"><i className="legend-swatch legend-swatch-reference" /> Reference</span>
-            <span className="legend-item"><i className="legend-swatch legend-swatch-before" /> Original</span>
-            <span className="legend-item"><i className="legend-swatch legend-swatch-after" /> Corrected</span>
+          <div className="chart-legend" role="group" aria-label="Tracks to play">
+            {([
+              ["reference", "Reference"],
+              ["before", "Original"],
+              ["after", "Corrected"],
+            ] as [TrackKey, string][]).map(([key, label]) => (
+              <span
+                key={key}
+                className={`legend-item legend-item-toggle${checked[key] ? "" : " is-off"}`}
+                role="checkbox"
+                aria-checked={checked[key]}
+                tabIndex={0}
+                onClick={(e) => toggleTrack(key, e.currentTarget)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    toggleTrack(key, e.currentTarget);
+                  }
+                }}
+              >
+                <i className="legend-checkbox" aria-hidden="true" />
+                <i className={`legend-swatch legend-swatch-${key}`} /> {label}
+              </span>
+            ))}
             {result.pitch.scale_notes.length > 0 && (
               <span className="legend-item"><i className="legend-swatch legend-swatch-scale" /> Scale notes</span>
             )}

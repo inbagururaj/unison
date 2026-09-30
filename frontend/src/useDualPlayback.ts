@@ -1,7 +1,9 @@
-// Decodes the reference and corrected audio for a result into AudioBuffers
-// once (re-decoding only when the URLs change), then plays both from a
-// chosen time on one AudioContext, scheduled at the same start time so they
-// cannot drift relative to each other. Assumes the two tracks share a
+// Decodes the reference, original and corrected audio for a result into
+// AudioBuffers once (re-decoding only when the URLs change), then plays all
+// three from a chosen time on one AudioContext, scheduled at the same start
+// time so they cannot drift relative to each other. Each track goes through
+// its own GainNode: checked = 1, unchecked = 0, so toggling a track while
+// playing is just a short gain ramp and never restarts anything. Assumes the two tracks share a
 // timeline (true for the notes_world/full_lock engines this UI exposes,
 // which render the corrected audio on the reference's timeline - see
 // backend/app/main.py's comment above where it builds the chart's time
@@ -9,33 +11,48 @@
 
 import { useEffect, useRef, useState } from "react";
 
+export type TrackKey = "reference" | "before" | "after";
+export type CheckedTracks = Record<TrackKey, boolean>;
+
+const TRACK_KEYS: TrackKey[] = ["reference", "before", "after"];
+const GAIN_RAMP_S = 0.02;
+
 interface DualPlayback {
   ready: boolean;
   isPlaying: boolean;
+  isPaused: boolean;
+  togglePause: () => void;
   playheadTime: number | null;
   play: (fromSeconds: number) => void;
   stop: () => void;
 }
 
-interface Buffers {
-  reference: AudioBuffer;
-  corrected: AudioBuffer;
+type Buffers = Record<TrackKey, AudioBuffer>;
+
+interface Node {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
 }
 
-interface Sources {
-  reference: AudioBufferSourceNode;
-  corrected: AudioBufferSourceNode;
-}
+type Sources = Record<TrackKey, Node>;
 
-export function useDualPlayback(referenceUrl: string | null, correctedUrl: string | null): DualPlayback {
+export function useDualPlayback(
+  referenceUrl: string | null,
+  takeUrl: string | null,
+  correctedUrl: string | null,
+  checked: CheckedTracks,
+): DualPlayback {
   const contextRef = useRef<AudioContext | null>(null);
   const buffersRef = useRef<Buffers | null>(null);
   const sourcesRef = useRef<Sources | null>(null);
   const rafRef = useRef<number | null>(null);
   const sessionRef = useRef(0);
+  const checkedRef = useRef(checked);
+  checkedRef.current = checked;
 
   const [ready, setReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [playheadTime, setPlayheadTime] = useState<number | null>(null);
 
   function getContext(): AudioContext {
@@ -52,19 +69,19 @@ export function useDualPlayback(referenceUrl: string | null, correctedUrl: strin
     const sources = sourcesRef.current;
     sourcesRef.current = null;
     if (sources) {
-      sources.reference.onended = null;
-      try {
-        sources.reference.stop();
-      } catch {
-        // already stopped/ended
-      }
-      try {
-        sources.corrected.stop();
-      } catch {
-        // already stopped/ended
+      sources.reference.source.onended = null;
+      for (const key of TRACK_KEYS) {
+        try {
+          sources[key].source.stop();
+        } catch {
+          // already stopped/ended
+        }
+        sources[key].source.disconnect();
+        sources[key].gain.disconnect();
       }
     }
     setIsPlaying(false);
+    setIsPaused(false);
     setPlayheadTime(null);
   }
 
@@ -73,22 +90,23 @@ export function useDualPlayback(referenceUrl: string | null, correctedUrl: strin
     setReady(false);
     buffersRef.current = null;
     stopInternal();
-    if (!referenceUrl || !correctedUrl) return;
+    if (!referenceUrl || !takeUrl || !correctedUrl) return;
 
     let cancelled = false;
     const ctx = getContext();
 
     async function load() {
-      const [refBuf, corrBuf] = await Promise.all([
-        fetch(referenceUrl as string)
+      const decode = (url: string) =>
+        fetch(url)
           .then((r) => r.arrayBuffer())
-          .then((b) => ctx.decodeAudioData(b)),
-        fetch(correctedUrl as string)
-          .then((r) => r.arrayBuffer())
-          .then((b) => ctx.decodeAudioData(b)),
+          .then((b) => ctx.decodeAudioData(b));
+      const [refBuf, takeBuf, corrBuf] = await Promise.all([
+        decode(referenceUrl as string),
+        decode(takeUrl as string),
+        decode(correctedUrl as string),
       ]);
       if (cancelled) return;
-      buffersRef.current = { reference: refBuf, corrected: corrBuf };
+      buffersRef.current = { reference: refBuf, before: takeBuf, after: corrBuf };
       setReady(true);
     }
 
@@ -100,7 +118,7 @@ export function useDualPlayback(referenceUrl: string | null, correctedUrl: strin
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [referenceUrl, correctedUrl]);
+  }, [referenceUrl, takeUrl, correctedUrl]);
 
   useEffect(() => {
     return () => {
@@ -110,6 +128,20 @@ export function useDualPlayback(referenceUrl: string | null, correctedUrl: strin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // checked-state changes while playing: ramp each gain, no restart
+  useEffect(() => {
+    const sources = sourcesRef.current;
+    const ctx = contextRef.current;
+    if (!sources || !ctx) return;
+    const now = ctx.currentTime;
+    for (const key of TRACK_KEYS) {
+      const param = sources[key].gain.gain;
+      param.cancelScheduledValues(now);
+      param.setValueAtTime(param.value, now);
+      param.linearRampToValueAtTime(checked[key] ? 1 : 0, now + GAIN_RAMP_S);
+    }
+  }, [checked]);
+
   function play(fromSeconds: number) {
     const buffers = buffersRef.current;
     if (!buffers) return;
@@ -118,7 +150,11 @@ export function useDualPlayback(referenceUrl: string | null, correctedUrl: strin
     const ctx = getContext();
     void ctx.resume();
 
-    const duration = Math.min(buffers.reference.duration, buffers.corrected.duration);
+    const duration = Math.min(
+      buffers.reference.duration,
+      buffers.before.duration,
+      buffers.after.duration,
+    );
     const offset = Math.min(Math.max(fromSeconds, 0), duration);
     const playFor = duration - offset;
     if (playFor <= 0) return;
@@ -126,22 +162,24 @@ export function useDualPlayback(referenceUrl: string | null, correctedUrl: strin
     const session = sessionRef.current;
     const startAt = ctx.currentTime + 0.05; // shared future start time so both sources begin in sync
 
-    const refSource = ctx.createBufferSource();
-    refSource.buffer = buffers.reference;
-    refSource.connect(ctx.destination);
+    const nodes = {} as Sources;
+    for (const key of TRACK_KEYS) {
+      const source = ctx.createBufferSource();
+      source.buffer = buffers[key];
+      const gain = ctx.createGain();
+      gain.gain.value = checkedRef.current[key] ? 1 : 0;
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      nodes[key] = { source, gain };
+    }
 
-    const corrSource = ctx.createBufferSource();
-    corrSource.buffer = buffers.corrected;
-    corrSource.connect(ctx.destination);
-
-    refSource.onended = () => {
+    nodes.reference.source.onended = () => {
       if (sessionRef.current === session) stopInternal();
     };
 
-    refSource.start(startAt, offset, playFor);
-    corrSource.start(startAt, offset, playFor);
+    for (const key of TRACK_KEYS) nodes[key].source.start(startAt, offset, playFor);
 
-    sourcesRef.current = { reference: refSource, corrected: corrSource };
+    sourcesRef.current = nodes;
     setIsPlaying(true);
     setPlayheadTime(offset);
 
@@ -166,5 +204,17 @@ export function useDualPlayback(referenceUrl: string | null, correctedUrl: strin
     stopInternal();
   }
 
-  return { ready, isPlaying, playheadTime, play, stop };
+  function togglePause() {
+    const ctx = contextRef.current;
+    if (!ctx || !sourcesRef.current) return;
+    if (ctx.state === "running") {
+      void ctx.suspend();
+      setIsPaused(true);
+    } else {
+      void ctx.resume();
+      setIsPaused(false);
+    }
+  }
+
+  return { ready, isPlaying, isPaused, togglePause, playheadTime, play, stop };
 }

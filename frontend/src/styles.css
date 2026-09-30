@@ -425,6 +425,44 @@ button:disabled {
   gap: 8px;
 }
 
+.legend-item-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+
+.legend-item-toggle.is-off {
+  opacity: 0.45;
+}
+
+.legend-checkbox {
+  position: relative;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+}
+
+.legend-item-toggle[aria-checked="true"] .legend-checkbox::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 4px;
+  height: 8px;
+  border: solid var(--ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.chart-readout-item.is-dim {
+  opacity: 0.4;
+}
+
+.chart-readout-state {
+  color: var(--muted);
+}
+
 .legend-swatch {
   display: inline-block;
   width: 20px;

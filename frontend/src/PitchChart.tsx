@@ -13,6 +13,7 @@
 
 import { useMemo } from "react";
 import type { PitchTrackData } from "./api";
+import type { CheckedTracks } from "./useDualPlayback";
 import { midiToNoteName, midiToNoteNameWithCents } from "./pitchNotes";
 
 const MARK_STEP = 0.5; // seconds between clickable/dot marks
@@ -32,6 +33,8 @@ interface Props {
   onSelectTime: (time: number) => void;
   playheadTime: number | null;
   isPlaying: boolean;
+  isPaused: boolean;
+  checked: CheckedTracks;
   onStop: () => void;
 }
 
@@ -116,6 +119,8 @@ export default function PitchChart({
   onSelectTime,
   playheadTime,
   isPlaying,
+  isPaused,
+  checked,
   onStop,
 }: Props) {
   const tracks: Track[] = [
@@ -293,15 +298,16 @@ export default function PitchChart({
       {selectedTime !== null && (
         <div className="chart-readout">
           <span className="chart-readout-time">{selectedTime.toFixed(2)}s</span>
-          <span className="chart-readout-item">
+          <span className={`chart-readout-item${checked.reference ? "" : " is-dim"}`}>
             <i className="legend-swatch legend-swatch-reference" /> {formatReadoutValue(reference, selectedTime)}
           </span>
-          <span className="chart-readout-item">
+          <span className={`chart-readout-item${checked.before ? "" : " is-dim"}`}>
             <i className="legend-swatch legend-swatch-before" /> {formatReadoutValue(before, selectedTime)}
           </span>
-          <span className="chart-readout-item">
+          <span className={`chart-readout-item${checked.after ? "" : " is-dim"}`}>
             <i className="legend-swatch legend-swatch-after" /> {formatReadoutValue(after, selectedTime)}
           </span>
+          {isPlaying && isPaused && <span className="chart-readout-state">paused</span>}
           {isPlaying && (
             <button type="button" className="button-secondary chart-stop-button" onClick={onStop}>
               Stop
