@@ -11,6 +11,7 @@ import {
 } from "./api";
 import FileSlot, { MicIcon } from "./FileSlot";
 import PitchChart from "./PitchChart";
+import { useDualPlayback } from "./useDualPlayback";
 
 type Status = "idle" | "processing" | "done" | "error";
 
@@ -62,6 +63,11 @@ export default function App() {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<ProcessResult | null>(null);
+  const [selectedTime, setSelectedTime] = useState<number | null>(null);
+  const playback = useDualPlayback(
+    result?.reference_audio_url ?? null,
+    result?.corrected_audio_url ?? null,
+  );
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -124,11 +130,22 @@ export default function App() {
     }
   }
 
+  function handleSelectTime(time: number) {
+    if (playback.isPlaying && selectedTime === time) {
+      playback.stop();
+      return;
+    }
+    setSelectedTime(time);
+    playback.play(time);
+  }
+
   async function handleProcess() {
     if (!referenceFile || !takeBlob) return;
     setStatus("processing");
     setErrorMessage(null);
     setResult(null);
+    setSelectedTime(null);
+    playback.stop();
     try {
       const data = await processTake(referenceFile, takeBlob, {
         engine,
@@ -153,6 +170,8 @@ export default function App() {
 
   function startOver() {
     if (isRecording) stopRecording();
+    playback.stop();
+    setSelectedTime(null);
     setReferenceFile(null);
     setTakeBlob(null);
     setTakeLabel("");
@@ -354,6 +373,11 @@ export default function App() {
             before={result.pitch.before}
             after={result.pitch.after}
             scaleNotes={result.pitch.scale_notes}
+            selectedTime={selectedTime}
+            onSelectTime={handleSelectTime}
+            playheadTime={playback.playheadTime}
+            isPlaying={playback.isPlaying}
+            onStop={playback.stop}
           />
           <div className="chart-legend">
             <span className="legend-item"><i className="legend-swatch legend-swatch-reference" /> Reference</span>
